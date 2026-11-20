@@ -1,0 +1,51 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-background: #1f1f1f;
+  --color-foreground: #e2e8f0;
+}
+
+@layer base {
+  button,
+  a {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+}
+
+@layer components {
+  .project-detail-scale {
+    zoom: 0.85;
+    width: 100%;
+  }
+}
+
+
+.asana-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #6b6d70 transparent;
+}
+
+@supports not (scrollbar-color: auto) {
+  .asana-scroll::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .asana-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .asana-scroll::-webkit-scrollbar-thumb {
+    background: #6b6d70;
+    border-radius: 8px;
+    border: 2px solid var(--scroll-bg, #252628);
+  }
+
+  .asana-scroll::-webkit-scrollbar-thumb:hover {
+    background: #8b8d90;
+  }
+}
