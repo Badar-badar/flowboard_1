@@ -274,10 +274,11 @@ export default function Projects() {
         </div>
       </div>
 
-      <div className="grid grid-cols-[minmax(0,1fr)_160px_minmax(140px,1fr)] items-center gap-4 border-b border-white/10 px-5 py-2 text-sm text-slate-400 max-sm:grid-cols-[minmax(0,1fr)_100px]">
+      <div className="grid grid-cols-[minmax(0,1fr)_160px_minmax(100px,1fr)_auto] items-center gap-4 border-b border-white/10 px-5 py-2 text-sm text-slate-400 max-sm:grid-cols-[minmax(0,1fr)_100px_auto]">
         <span>Name</span>
         <span className="max-sm:hidden">Members</span>
         <span className="flex items-center justify-end gap-1 font-medium"><ArrowDownUp className="h-4 w-4" /> Last modified</span>
+        <span aria-hidden="true" />
       </div>
 
       {!loaded && loading && <p className="px-5 py-8 text-sm text-slate-400">Loading projects...</p>}

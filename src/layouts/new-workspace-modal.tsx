@@ -1,11 +1,21 @@
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import { useWorkspace } from '../features/workspace/hooks/use-workspace'
+import EmailSuggestionInput from '../features/members/components/email-suggestion-input'
+import { workspaceApi } from '../features/workspace/api/workspace.api'
 
 export default function NewWorkspaceModal({ onClose }) {
-  const { addWorkspace, creating } = useWorkspace()
+  const { addWorkspace, creating, activeId } = useWorkspace()
   const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [suggestions, setSuggestions] = useState([])
+  const [createdWorkspaceId, setCreatedWorkspaceId] = useState(null)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!activeId) return
+    workspaceApi.getMembers(activeId).then((response) => setSuggestions(response.data ?? [])).catch(() => setSuggestions([]))
+  }, [activeId])
 
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose()
@@ -15,12 +25,14 @@ export default function NewWorkspaceModal({ onClose }) {
 
   const onSubmit = async (e) => {
     e.preventDefault()
-    if (name.trim().length < 2) return setError('Name must be at least 2 characters')
+    if (!createdWorkspaceId && name.trim().length < 2) return setError('Name must be at least 2 characters')
     try {
-      await addWorkspace(name.trim())
+      const workspaceId = createdWorkspaceId ?? (await addWorkspace(name.trim()))._id
+      setCreatedWorkspaceId(workspaceId)
+      if (email.trim()) await workspaceApi.addMember(workspaceId, email.trim().toLowerCase())
       onClose()
     } catch (err) {
-      setError(typeof err === 'string' ? err : 'Could not create workspace')
+      setError(createdWorkspaceId ? `Workspace created, but member could not be added: ${err?.message ?? 'Check that this email has an account.'}` : typeof err === 'string' ? err : err?.message ?? 'Could not create workspace')
     }
   }
 
@@ -48,6 +60,10 @@ export default function NewWorkspaceModal({ onClose }) {
           placeholder="Company or team name"
           className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-slate-400 outline-none focus:border-white/40"
         />
+        <div className="mt-4">
+          <EmailSuggestionInput value={email} onChange={(value) => { setEmail(value); setError('') }} candidates={suggestions} label="Add a member (optional)" placeholder="Invite by registered email" />
+          <p className="mt-1.5 text-xs text-slate-500">Workspace members must already have a Task Desk account.</p>
+        </div>
         {error && <p className="mt-2 text-sm text-rose-400">{error}</p>}
 
         <div className="mt-5 flex justify-end gap-2">

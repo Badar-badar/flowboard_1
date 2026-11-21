@@ -5,6 +5,7 @@ import { useAuth } from '../../auth/hooks/use-auth'
 import { useProjectMembers } from '../../members/hooks/use-project-members'
 import { useWorkspace } from '../../workspace/hooks/use-workspace'
 import { useProjects } from '../hooks/use-projects'
+import InviteMembersModal from '../../members/components/invite-members-modal'
 
 const nameOf = (person) => person?.name ?? person?.displayName ?? person?.email ?? 'You'
 const formattedTime = (value) => {
@@ -43,6 +44,8 @@ export default function ProjectOverview({ project }) {
   const [editingDescription, setEditingDescription] = useState(false)
   const [savingDescription, setSavingDescription] = useState(false)
   const [descriptionError, setDescriptionError] = useState('')
+  const [inviting, setInviting] = useState(false)
+  const canInvite = project.role === 'admin'
 
   useEffect(() => {
     setDescription(project.description ?? '')
@@ -89,7 +92,7 @@ export default function ProjectOverview({ project }) {
         <section className="mt-20">
           <h2 className="text-2xl font-semibold text-slate-100">Project roles</h2>
           <div className="mt-5 grid max-w-3xl grid-cols-1 gap-4 sm:grid-cols-2">
-            <button type="button" disabled className="flex h-20 items-center gap-3 rounded-lg px-3 text-slate-400 opacity-80" title="Member invites are not available yet">
+            <button type="button" disabled={!canInvite} onClick={() => setInviting(true)} className="group flex h-20 items-center gap-3 rounded-lg px-3 text-slate-400 transition hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-60" title={canInvite ? 'Invite a project member' : 'Only project admins can invite members'}>
               <span className="flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-slate-500 text-2xl leading-none">+</span>
               <span className="font-medium">Add member</span>
             </button>
@@ -117,6 +120,7 @@ export default function ProjectOverview({ project }) {
           <ActivityEntry title="Project created" time={formattedTime(createdAt)} person={owner ?? user} line={false} showAvatar={false} />
         </ol>
       </aside>
+      {inviting && <InviteMembersModal scope="project" projectId={project._id} projectName={project.name} onClose={() => setInviting(false)} />}
     </div>
   )
 }

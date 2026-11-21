@@ -5,6 +5,8 @@ export namespace ITasks {
   export interface Task {
     _id: string
     projectId: string
+    projectIds?: string[]
+    dependencies?: string[]
     title: string
     description?: string | null
     status: Status
@@ -14,7 +16,7 @@ export namespace ITasks {
     createdAt?: string
     attachments?: Attachment[]
   }
-  export interface UpdatePayload extends Partial<Pick<Task, 'title' | 'description' | 'status' | 'priority' | 'assigneeId' | 'dueDate'>> { }
+  export interface UpdatePayload extends Partial<Pick<Task, 'title' | 'description' | 'status' | 'priority' | 'assigneeId' | 'dueDate' | 'dependencies'>> { }
   export interface CreatePayload extends UpdatePayload { title: string; files?: File[] }
   export interface ListResponse { data: Task[] }
   export interface ItemResponse { data: Task }

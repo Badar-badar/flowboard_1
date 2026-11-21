@@ -7,6 +7,7 @@ import AvatarStack from '../../../components/ui/avatar-stack'
 import Dropdown from '../../../components/ui/dropdown'
 import { PROJECT_STATUSES } from '../project-constants'
 import { useProjects } from '../hooks/use-projects'
+import InviteMembersModal from '../../members/components/invite-members-modal'
 
 const tabs = [
   { key: 'overview', label: 'Overview' },
@@ -19,7 +20,8 @@ export default function ProjectHeader({ project, view, onViewChange }) {
   const [editing, setEditing] = useState(false)
   const [favorite, setFavorite] = useState(Boolean(project.isFavorite))
   const [copied, setCopied] = useState(false)
-  const { editProject } = useProjects()
+  const [inviting, setInviting] = useState(false)
+  const { editProject, toggleFavorite: toggleFavoriteRequest } = useProjects()
   const status = PROJECT_STATUSES.find((item) => item.value === project.status)
 
   const share = async () => {
@@ -35,7 +37,7 @@ export default function ProjectHeader({ project, view, onViewChange }) {
   const toggleFavorite = async () => {
     const next = !favorite
     setFavorite(next)
-    try { await editProject(project._id, { isFavorite: next }) } catch { setFavorite(!next) }
+    try { await toggleFavoriteRequest(project._id) } catch { setFavorite(!next) }
   }
 
   return (
@@ -75,7 +77,10 @@ export default function ProjectHeader({ project, view, onViewChange }) {
         </Dropdown>
 
         <div className="ml-auto flex shrink-0 items-center gap-3">
-          <AvatarStack members={project.members} total={project.memberCount} />
+          <div className="group/members relative flex items-center">
+            <AvatarStack members={project.members} total={project.memberCount} />
+            {project.role === 'admin' && <button type="button" onClick={() => setInviting(true)} className="absolute -right-2 -top-2 rounded-full border border-[#1e1f21] bg-blue-500 p-1 text-white opacity-0 shadow transition-opacity hover:bg-blue-400 group-hover/members:opacity-100 group-focus-within/members:opacity-100" aria-label="Invite project members" title="Invite members"><Plus className="h-3.5 w-3.5" /></button>}
+          </div>
           <button type="button" onClick={share} className="inline-flex h-8 items-center gap-2 rounded-lg bg-blue-500 px-4 text-sm font-medium text-white transition hover:bg-blue-400">
             {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}{copied ? 'Copied' : 'Share'}
           </button>
@@ -110,6 +115,7 @@ export default function ProjectHeader({ project, view, onViewChange }) {
         </Dropdown>
       </div>
       {editing && <EditProjectModal project={project} onClose={() => setEditing(false)} />}
+      {inviting && <InviteMembersModal scope="project" projectId={project._id} projectName={project.name} onClose={() => setInviting(false)} />}
     </div>
   )
 }

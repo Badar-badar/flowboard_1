@@ -1,5 +1,5 @@
 import { createSlice, createEntityAdapter } from '@reduxjs/toolkit'
-import { fetchProjects, fetchProject, createProject, updateProject, deleteProject } from './projects.thunks'
+import { fetchProjects, fetchProject, createProject, updateProject, deleteProject, toggleProjectFavorite } from './projects.thunks'
 import { setActiveWorkspace } from '../../workspace/store/workspace.slice'
 import { logoutUser } from '../../auth/store/auth.thunks'
 import type { IProjects } from '../types/projects.types'
@@ -60,6 +60,9 @@ const projectsSlice = createSlice({
       // PATCH returns the project without role/taskStats, so merge instead of replace
       .addCase(updateProject.fulfilled, (s, { payload }) => {
         adapter.updateOne(s, { id: payload._id, changes: payload })
+      })
+      .addCase(toggleProjectFavorite.fulfilled, (s, { payload }) => {
+        adapter.updateOne(s, { id: payload.id, changes: { isFavorite: payload.isFavorite } })
       })
       .addCase(deleteProject.fulfilled, (s, { payload }) => { adapter.removeOne(s, payload) })
 

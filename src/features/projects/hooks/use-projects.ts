@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useAppDispatch, useAppSelector } from '../../../app/hooks'
-import { fetchProjects, fetchProject, createProject, updateProject, deleteProject } from '../store/projects.thunks'
+import { fetchProjects, fetchProject, createProject, updateProject, deleteProject, toggleProjectFavorite } from '../store/projects.thunks'
 import { projectsSelectors } from '../store/projects.slice'
 
 // autoFetch: true in ONE always-mounted place (the sidebar), false elsewhere
@@ -24,6 +24,7 @@ export function useProjects({ autoFetch = false } = {}) {
     addProject: (data) => dispatch(createProject(data)).unwrap(),
     editProject: (id, changes) => dispatch(updateProject({ id, changes })).unwrap(),
     removeProject: (id) => dispatch(deleteProject(id)).unwrap(),
+    toggleFavorite: (id) => dispatch(toggleProjectFavorite(id)).unwrap(),
   }
 }
 

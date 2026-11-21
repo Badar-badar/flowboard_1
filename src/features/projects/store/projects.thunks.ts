@@ -11,3 +11,7 @@ export const deleteProject = createApiThunk<string, string>('projects/delete', a
   await projectsApi.remove(id)
   return id
 })
+export const toggleProjectFavorite = createApiThunk<string, { id: string; isFavorite: boolean }>('projects/toggleFavorite', async (id) => ({
+  id,
+  isFavorite: (await projectsApi.toggleFavorite(id)).data.isFavorite,
+}))

@@ -7,4 +7,5 @@ export const projectsApi = {
   create: (data: IProjects.CreatePayload) => axiosClient.post<IProjects.ItemResponse>('/project', data),
   update: (id: string, data: IProjects.UpdatePayload) => axiosClient.patch<IProjects.ItemResponse>(`/project/${id}`, data),
   remove: (id: string) => axiosClient.delete(`/project/${id}`),
+  toggleFavorite: (projectId: string) => axiosClient.post<{ data: { isFavorite: boolean } }>(`/project/${projectId}/favorite`),
 }

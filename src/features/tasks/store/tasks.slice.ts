@@ -34,6 +34,10 @@ const tasksSlice = createSlice({
   initialState,
   reducers: {
     clearTasksError(s) { s.error = null },
+    setTaskProjectIds(s, { payload }: { payload: { id: string; projectIds: string[] } }) {
+      const task = s.entities[payload.id]
+      if (task) task.projectIds = payload.projectIds
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -41,7 +45,7 @@ const tasksSlice = createSlice({
         const projectId = meta.arg
         const fresh = new Set(payload.map((t) => t._id))
         // remove tasks of this project that no longer exist on the server
-        const stale = s.ids.filter((id) => s.entities[id].projectId === projectId && !fresh.has(id))
+        const stale = s.ids.filter((id) => (s.entities[id].projectId === projectId || s.entities[id].projectIds?.includes(projectId)) && !fresh.has(id))
         adapter.removeMany(s, stale)
         adapter.upsertMany(s, payload)
         s.loadedProjects[projectId] = true
@@ -100,12 +104,12 @@ const tasksSlice = createSlice({
   },
 })
 
-export const { clearTasksError } = tasksSlice.actions
+export const { clearTasksError, setTaskProjectIds } = tasksSlice.actions
 export const tasksSelectors = adapter.getSelectors((state: RootState) => state.tasks)
 
 export const selectTasksByProject = createSelector(
   [tasksSelectors.selectAll, (_: RootState, projectId: string) => projectId],
-  (tasks, projectId) => tasks.filter((t) => t.projectId === projectId),
+  (tasks, projectId) => tasks.filter((t) => t.projectId === projectId || t.projectIds?.includes(projectId)),
 )
 
 export const selectMyTasks = createSelector(
