@@ -1,12 +1,21 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 
-export default function Dropdown({ trigger, children, align = 'left', width = 'w-64' }) {
+interface DropdownProps {
+  trigger: (state: { open: boolean; toggle: () => void }) => ReactNode
+  children: ReactNode | ((state: { close: () => void }) => ReactNode)
+  align?: 'left' | 'right'
+  width?: string
+}
+
+export default function Dropdown({ trigger, children, align = 'left', width = 'w-64' }: DropdownProps) {
   const [open, setOpen] = useState(false)
-  const ref = useRef(null)
+  const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const onDown = (e) => ref.current && !ref.current.contains(e.target) && setOpen(false)
-    const onKey = (e) => e.key === 'Escape' && setOpen(false)
+    const onDown = (event: MouseEvent) => {
+      if (ref.current && event.target instanceof Node && !ref.current.contains(event.target)) setOpen(false)
+    }
+    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && setOpen(false)
     document.addEventListener('mousedown', onDown)
     document.addEventListener('keydown', onKey)
     return () => {

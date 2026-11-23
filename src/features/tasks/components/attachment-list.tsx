@@ -1,17 +1,23 @@
 import { useRef, useState } from 'react'
 import { FileText, Plus, Trash2 } from 'lucide-react'
 import { ALLOWED_FILE_TYPES, MAX_FILES, MAX_FILE_SIZE } from '../task-constants'
+import type { ITasks } from '../types/tasks.types'
 
-const size = (b) => (b > 1024 * 1024 ? `${(b / 1024 / 1024).toFixed(1)} MB` : `${Math.ceil(b / 1024)} KB`)
+const size = (bytes: number) => (bytes > 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.ceil(bytes / 1024)} KB`)
 
-export default function AttachmentList({ attachments = [], canEdit, onUpload, onRemove }) {
-  const input = useRef(null)
+export default function AttachmentList({ attachments = [], canEdit, onUpload, onRemove }: {
+  attachments?: ITasks.Attachment[]
+  canEdit: boolean
+  onUpload: (files: File[]) => Promise<unknown>
+  onRemove: (attachmentId: string) => Promise<unknown>
+}) {
+  const input = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
-  const pick = async (e) => {
-    const files = Array.from(e.target.files ?? [])
-    e.target.value = ''
+  const pick = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.currentTarget.files ?? [])
+    event.currentTarget.value = ''
     if (!files.length) return
     if (files.length > MAX_FILES) return setError(`You can upload up to ${MAX_FILES} files at once`)
     const bad = files.find((f) => !ALLOWED_FILE_TYPES.includes(f.type) || f.size > MAX_FILE_SIZE)

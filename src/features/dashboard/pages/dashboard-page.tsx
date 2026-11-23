@@ -5,7 +5,6 @@ import Avatar from '../../../components/ui/avatar'
 import Dropdown from '../../../components/ui/dropdown'
 import { useAppDispatch } from '../../../app/hooks'
 import { useAuth } from '../../auth/hooks/use-auth'
-import { useWorkspace } from '../../workspace/hooks/use-workspace'
 import { useProjects } from '../../projects/hooks/use-projects'
 import { useMyTasks } from '../../tasks/hooks/use-tasks'
 import TaskCheck from '../../tasks/components/task-check'
@@ -24,8 +23,7 @@ function formatToday() {
 export default function Home() {
   const dispatch = useAppDispatch()
   const { user } = useAuth()
-  const { activeWorkspace } = useWorkspace()
-  const { projects, loaded: projectsLoaded } = useProjects({ autoFetch: true })
+  const { projects, loaded: projectsLoaded } = useProjects()
   const { tasks, loaded: tasksLoaded, toggleDone } = useMyTasks()
   const [taskTab, setTaskTab] = useState('Upcoming')
   const [weekRange, setWeekRange] = useState('week')
@@ -87,7 +85,6 @@ export default function Home() {
             </Dropdown>
             <span className="inline-flex items-center gap-1.5"><Check className="h-4 w-4" />{completedCount} tasks completed</span>
             <span className="inline-flex items-center gap-1.5"><Users className="h-4 w-4" />{collaboratorCount || 1} collaborators</span>
-            <button type="button" aria-label="Add widgets" className="inline-flex h-10 items-center gap-2 rounded-lg border border-white/15 px-3 text-slate-200 transition hover:bg-white/5"><Plus className="h-4 w-4" />Add widgets</button>
           </div>
         </div>
 
@@ -105,7 +102,7 @@ export default function Home() {
                 <Link to={PATHS.tasks} className="block px-3 py-2 text-sm text-slate-200 hover:bg-white/5">Open My tasks</Link>
               </Dropdown>
             </div>
-            <div className="mt-3 flex gap-1 border-b border-white/10 px-6">
+            <div className="mt-3 flex gap-1 border-b border-white/10 px-6 pb-2">
               {taskTabs.map((tab) => <button key={tab} type="button" onClick={() => setTaskTab(tab)} className={`rounded-t-lg px-3 py-2 text-[15px] font-semibold leading-6 transition ${taskTab === tab ? 'bg-blue-950 text-blue-400' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>{tab}{tab === 'Overdue' && visibleTasks.length > 0 && taskTab === tab ? ` (${visibleTasks.length})` : tab === 'Overdue' && tasks.filter(isOverdue).length > 0 ? ` (${tasks.filter(isOverdue).length})` : ''}</button>)}
             </div>
             <div className="flex-1 px-6">

@@ -1,7 +1,7 @@
 import { Check } from 'lucide-react'
 import { PROJECT_COLORS } from '../project-constants'
 
-export default function ColorPicker({ value, onChange }) {
+export default function ColorPicker({ value, onChange }: { value: string; onChange: (color: string) => void }) {
   return (
     <div className="flex flex-wrap gap-2">
       {PROJECT_COLORS.map((c) => (

@@ -5,17 +5,18 @@ import Dropdown from '../../../components/ui/dropdown'
 import { PROJECT_COLORS } from '../project-constants'
 import { useProjects } from '../hooks/use-projects'
 import { PATHS } from '../../../app/paths'
+import type { IProjects } from '../types/projects.types'
 
 const item = 'flex w-full items-center gap-3 px-4 py-2.5 text-left text-[15px] text-slate-100 hover:bg-white/5'
 
-export default function ProjectMenu({ project, onEdit }) {
+export default function ProjectMenu({ project, onEdit }: { project: IProjects.Project; onEdit: () => void }) {
   const navigate = useNavigate()
   const { editProject, removeProject } = useProjects()
   const [showColors, setShowColors] = useState(false)
   const [copied, setCopied] = useState(false)
   const isAdmin = project.role === 'admin'
 
-  const copyLink = async (close) => {
+  const copyLink = async (close: () => void) => {
     try {
       await navigator.clipboard.writeText(window.location.href)
       setCopied(true)
@@ -25,11 +26,11 @@ export default function ProjectMenu({ project, onEdit }) {
     }
   }
 
-  const setColor = async (color) => {
+  const setColor = async (color: string) => {
     try { await editProject(project._id, { color }) } catch { /* shown on refetch */ }
   }
 
-  const onDelete = async (close) => {
+  const onDelete = async (close: () => void) => {
     close()
     if (!window.confirm(`Delete "${project.name}" and all its tasks? This cannot be undone.`)) return
     try {

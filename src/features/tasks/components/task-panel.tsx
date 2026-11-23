@@ -17,6 +17,9 @@ import { useAppDispatch } from '../../../app/hooks'
 import { setTaskProjectIds } from '../store/tasks.slice'
 import Avatar from '../../../components/ui/avatar'
 import { useAuth } from '../../auth/hooks/use-auth'
+import type { ITasks } from '../types/tasks.types'
+import type { IProjects } from '../../projects/types/projects.types'
+import type { ReactNode } from 'react'
 
 const relativeCreatedTime = (value?: string) => {
   if (!value) return 'just now'
@@ -33,21 +36,21 @@ const relativeCreatedTime = (value?: string) => {
   return new Intl.RelativeTimeFormat(undefined, { numeric: 'always' }).format(-Math.floor(elapsed / duration), unit)
 }
 
-const Row = ({ label, children }) => (
+const Row = ({ label, children }: { label: string; children: ReactNode }) => (
   <div className="grid grid-cols-[168px_minmax(0,1fr)] items-center gap-4 py-2">
     <span className="text-sm text-slate-200">{label}</span>
     <div className="min-w-0">{children}</div>
   </div>
 )
 
-export default function TaskPanel({ taskId, projectId, role, onClose }) {
+export default function TaskPanel({ taskId, projectId, role, onClose }: { taskId: string; projectId: string; role?: string; onClose: () => void }) {
   const dispatch = useAppDispatch()
   const task = useTask(taskId)
   const { editTask, removeTask, addFiles, removeFile } = useTasks(projectId)
   const { members, meId } = useProjectMembers(projectId)
   const { user } = useAuth()
   const { activeWorkspace } = useWorkspace()
-  const { projects } = useProjects({ autoFetch: true })
+  const { projects } = useProjects()
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -72,7 +75,7 @@ export default function TaskPanel({ taskId, projectId, role, onClose }) {
   }, [task?._id, task?.projectId, task?.projectIds])
 
   useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && onClose()
+    const onKey = (e: globalThis.KeyboardEvent) => e.key === 'Escape' && onClose()
     const onOutsidePointer = (event: PointerEvent) => {
       if (!panelRef.current?.contains(event.target as Node)) onClose()
     }
@@ -89,7 +92,7 @@ export default function TaskPanel({ taskId, projectId, role, onClose }) {
     const closePicker = (event: MouseEvent) => {
       if (!projectPickerRef.current?.contains(event.target as Node)) setProjectPickerOpen(false)
     }
-    const onPickerKey = (event: KeyboardEvent) => {
+    const onPickerKey = (event: globalThis.KeyboardEvent) => {
       if (event.key === 'Escape') setProjectPickerOpen(false)
     }
     document.addEventListener('mousedown', closePicker)
@@ -110,7 +113,7 @@ export default function TaskPanel({ taskId, projectId, role, onClose }) {
 
   const fullEdit = canEditTasks(role)
   const statusOk = canChangeStatus(role, task, meId)
-  const save = (changes) => editTask(task._id, changes).catch((e) => setError(typeof e === 'string' ? e : 'Could not save'))
+  const save = (changes: ITasks.UpdatePayload) => editTask(task._id, changes).catch((e: unknown) => setError(typeof e === 'string' ? e : 'Could not save'))
 
   const saveTitle = () => {
     const v = title.trim()
@@ -146,7 +149,7 @@ export default function TaskPanel({ taskId, projectId, role, onClose }) {
     : creatorMember?.name ?? creatorMember?.email ?? ([user?.uid, user?.email].includes(creatorId) ? user?.displayName ?? user?.email : undefined)
   const createdAt = task.createdAt ?? task.created_at
   const visibleProjects = projects.filter((project) => (project.name ?? '').toLowerCase().includes(projectQuery.trim().toLowerCase()))
-  const toggleProjectLink = async (project) => {
+  const toggleProjectLink = async (project: IProjects.Project) => {
     if (projectLinkBusy) return
     setProjectLinkBusy(true)
     setError('')
@@ -157,8 +160,8 @@ export default function TaskPanel({ taskId, projectId, role, onClose }) {
       const nextIds = [...new Set([response.data.projectId, ...(response.data.projectIds ?? [])])]
       setLinkedProjectIds(nextIds)
       dispatch(setTaskProjectIds({ id: task._id, projectIds: nextIds }))
-    } catch (requestError) {
-      setError(requestError?.message ?? 'Could not update project links')
+    } catch (requestError: unknown) {
+      setError(requestError && typeof requestError === 'object' && 'message' in requestError && typeof requestError.message === 'string' ? requestError.message : 'Could not update project links')
     } finally { setProjectLinkBusy(false) }
   }
 

@@ -2,36 +2,38 @@ import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import { PROJECT_STATUSES } from '../project-constants'
 import { useProjects } from '../hooks/use-projects'
+import type { IProjects } from '../types/projects.types'
+import type { FormEvent, ChangeEvent } from 'react'
 
 const field = 'w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-slate-400 outline-none focus:border-white/40 [color-scheme:dark]'
-const day = (d) => (d ? new Date(d).toISOString().slice(0, 10) : '')
+const day = (d?: string | null) => (d ? new Date(d).toISOString().slice(0, 10) : '')
 
-export default function EditProjectModal({ project, onClose }) {
+export default function EditProjectModal({ project, onClose }: { project: IProjects.Project; onClose: () => void }) {
   const { editProject } = useProjects()
   const [form, setForm] = useState({
     name: project.name,
     description: project.description ?? '',
     status: project.status,
     startDate: day(project.startDate),
-    dueDate: day(project.endDate),
+    dueDate: day(project.dueDate),
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && onClose()
+    const onKey = (e: globalThis.KeyboardEvent) => e.key === 'Escape' && onClose()
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  const set = (key) => (e) => setForm({ ...form, [key]: e.target.value })
+  const set = (key: 'name' | 'description' | 'status' | 'startDate' | 'dueDate') => (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setForm({ ...form, [key]: e.target.value })
 
-  const onSubmit = async (e) => {
+  const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const name = form.name.trim()
     if (name.length < 2) return setError('Name must be at least 2 characters')
 
-    const changes = { name, status: form.status, description: form.description.trim() }
+    const changes: IProjects.UpdatePayload = { name, status: form.status, description: form.description.trim() }
     if (form.startDate) changes.startDate = form.startDate
     if (form.dueDate) changes.dueDate = form.dueDate
 

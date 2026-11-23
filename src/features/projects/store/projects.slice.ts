@@ -67,7 +67,7 @@ const projectsSlice = createSlice({
       .addCase(deleteProject.fulfilled, (s, { payload }) => { adapter.removeOne(s, payload) })
 
       // projects belong to a workspace: clear on switch and logout
-      .addCase(setActiveWorkspace, (s, { payload }) => ({ ...initialState, workspaceId: payload }))
+      .addCase(setActiveWorkspace, (_s, { payload }) => ({ ...initialState, workspaceId: payload }))
       .addCase(logoutUser.fulfilled, () => initialState)
   },
 })

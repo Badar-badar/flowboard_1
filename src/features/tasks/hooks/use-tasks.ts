@@ -5,11 +5,12 @@ import {
   updateTask, deleteTask, uploadAttachments, deleteAttachment,
 } from '../store/tasks.thunks'
 import { selectTasksByProject, selectMyTasks, tasksSelectors, clearTasksError } from '../store/tasks.slice'
+import type { ITasks } from '../types/tasks.types'
 
-export function useTasks(projectId) {
+export function useTasks(projectId?: string) {
   const dispatch = useAppDispatch()
-  const tasks = useAppSelector((s) => selectTasksByProject(s, projectId))
-  const loaded = useAppSelector((s) => !!s.tasks.loadedProjects[projectId])
+  const tasks = useAppSelector((s) => projectId ? selectTasksByProject(s, projectId) : [])
+  const loaded = useAppSelector((s) => !!(projectId && s.tasks.loadedProjects[projectId]))
   const error = useAppSelector((s) => s.tasks.error)
 
   useEffect(() => {
@@ -21,18 +22,21 @@ export function useTasks(projectId) {
     loaded,
     error,
     clearError: () => dispatch(clearTasksError()),
-    addTask: (data) => dispatch(createTask({ projectId, data })).unwrap(),
-    editTask: (id, changes) => dispatch(updateTask({ id, changes })).unwrap(),
-    removeTask: (id) => dispatch(deleteTask(id)).unwrap(),
-    addFiles: (id, files) => dispatch(uploadAttachments({ id, files })).unwrap(),
-    removeFile: (id, attachmentId) => dispatch(deleteAttachment({ id, attachmentId })).unwrap(),
+    addTask: (data: ITasks.CreatePayload) => {
+      if (!projectId) return Promise.reject(new Error('A project is required to create a task'))
+      return dispatch(createTask({ projectId, data })).unwrap()
+    },
+    editTask: (id: string, changes: ITasks.UpdatePayload) => dispatch(updateTask({ id, changes })).unwrap(),
+    removeTask: (id: string) => dispatch(deleteTask(id)).unwrap(),
+    addFiles: (id: string, files: File[]) => dispatch(uploadAttachments({ id, files })).unwrap(),
+    removeFile: (id: string, attachmentId: string) => dispatch(deleteAttachment({ id, attachmentId })).unwrap(),
   }
 }
 
 // one task for the side panel; fetches it if it isn't in the store yet (opened from a link)
-export function useTask(id) {
+export function useTask(id?: string) {
   const dispatch = useAppDispatch()
-  const task = useAppSelector((s) => tasksSelectors.selectById(s, id))
+  const task = useAppSelector((s) => id ? tasksSelectors.selectById(s, id) : undefined)
 
   useEffect(() => {
     if (id) dispatch(fetchTask(id))
@@ -54,7 +58,7 @@ export function useMyTasks() {
   return {
     tasks,
     loaded,
-    toggleDone: (task) =>
+    toggleDone: (task: ITasks.Task) =>
       dispatch(updateTask({ id: task._id, changes: { status: task.status === 'done' ? 'todo' : 'done' } })).unwrap(),
   }
 }

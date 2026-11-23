@@ -2,13 +2,14 @@ import { useEffect } from 'react'
 import { useAppDispatch, useAppSelector } from '../../../app/hooks'
 import { fetchMembers } from '../store/members.thunks'
 import { useAuth } from '../../auth/hooks/use-auth'
+import type { IMembers } from '../types/members.types'
 
-const EMPTY = []
+const EMPTY: IMembers.Member[] = []
 
-export function useProjectMembers(projectId) {
+export function useProjectMembers(projectId?: string) {
   const dispatch = useAppDispatch()
   const { user } = useAuth()
-  const stored = useAppSelector((s) => s.members.byProject[projectId])
+  const stored = useAppSelector((s) => projectId ? s.members.byProject[projectId] : undefined)
 
   useEffect(() => {
     if (projectId && stored === undefined) dispatch(fetchMembers(projectId))
@@ -16,7 +17,7 @@ export function useProjectMembers(projectId) {
 
   const members = stored ?? EMPTY
   // the Redux user is the Firebase user, so match "me" by email to get the Mongo _id
-  const me = members.find((m) => m.email?.toLowerCase() === user?.email?.toLowerCase()) ?? null
+  const me = members.find((member: IMembers.Member) => member.email?.toLowerCase() === user?.email?.toLowerCase()) ?? null
 
   return { members, me, meId: me?._id ?? null, loaded: stored !== undefined }
 }

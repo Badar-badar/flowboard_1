@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, ChevronDown, Circle, Grid2X2, Plus, Share2, Star } from 'lucide-react'
+import { Check, Circle, Grid2X2, Plus, Share2, Star } from 'lucide-react'
 import ProjectIcon from './project-icon'
 import ProjectMenu from './project-menu'
 import EditProjectModal from './edit-project-modal'
@@ -8,6 +8,9 @@ import Dropdown from '../../../components/ui/dropdown'
 import { PROJECT_STATUSES } from '../project-constants'
 import { useProjects } from '../hooks/use-projects'
 import InviteMembersModal from '../../members/components/invite-members-modal'
+import type { IProjects } from '../types/projects.types'
+import type { Dispatch, SetStateAction } from 'react'
+import { useWorkspace } from '../../workspace/hooks/use-workspace'
 
 const tabs = [
   { key: 'overview', label: 'Overview' },
@@ -16,12 +19,13 @@ const tabs = [
   { key: 'dashboard', label: 'Dashboard' },
 ]
 
-export default function ProjectHeader({ project, view, onViewChange }) {
+export default function ProjectHeader({ project, view, onViewChange }: { project: IProjects.Project; view: string; onViewChange: Dispatch<SetStateAction<string>> }) {
   const [editing, setEditing] = useState(false)
   const [favorite, setFavorite] = useState(Boolean(project.isFavorite))
   const [copied, setCopied] = useState(false)
   const [inviting, setInviting] = useState(false)
   const { editProject, toggleFavorite: toggleFavoriteRequest } = useProjects()
+  const { activeId: workspaceId } = useWorkspace()
   const status = PROJECT_STATUSES.find((item) => item.value === project.status)
 
   const share = async () => {
@@ -90,7 +94,7 @@ export default function ProjectHeader({ project, view, onViewChange }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-1 overflow-x-auto px-5 py-0 md:px-6">
+      <div className="flex items-center gap-1 overflow-x-auto px-5 py-2 md:px-6">
         {tabs.map((tab) => {
           const active = tab.key === view
           return (
@@ -115,7 +119,7 @@ export default function ProjectHeader({ project, view, onViewChange }) {
         </Dropdown>
       </div>
       {editing && <EditProjectModal project={project} onClose={() => setEditing(false)} />}
-      {inviting && <InviteMembersModal scope="project" projectId={project._id} projectName={project.name} onClose={() => setInviting(false)} />}
+      {inviting && <InviteMembersModal scope="project" projectId={project._id} projectName={project.name} workspaceId={workspaceId ?? undefined} onClose={() => setInviting(false)} />}
     </div>
   )
 }

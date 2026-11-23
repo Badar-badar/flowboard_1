@@ -6,6 +6,7 @@ export namespace IProjects {
     role?: string
     owner?: IProjects.Member
     createdBy?: IProjects.Member
+    ownerId?: string | IProjects.Member
     description?: string
     status?: string
     startDate?: string | null
@@ -15,6 +16,9 @@ export namespace IProjects {
     isFavorite?: boolean
     createdAt?: string
     created_at?: string
+    updatedAt?: string
+    updated_at?: string
+    workspaceId?: string
     taskStats?: { total: number; done: number }
   }
   export interface Member { _id?: string; uid?: string; userId?: string; name?: string; displayName?: string; email?: string; photoURL?: string }

@@ -5,10 +5,13 @@ import { PATHS } from '../../../app/paths'
 import Avatar from '../../../components/ui/avatar'
 import InviteMembersModal from '../../members/components/invite-members-modal'
 import { useProjects } from '../hooks/use-projects'
+import type { IProjects } from '../types/projects.types'
+import { useWorkspace } from '../../workspace/hooks/use-workspace'
 
-export default function ProjectRow({ project }) {
+export default function ProjectRow({ project }: { project: IProjects.Project }) {
   const members = project.members ?? []
   const { toggleFavorite } = useProjects()
+  const { activeId: workspaceId } = useWorkspace()
   const [favorite, setFavorite] = useState(Boolean(project.isFavorite))
   const [inviting, setInviting] = useState(false)
   const [savingFavorite, setSavingFavorite] = useState(false)
@@ -59,7 +62,7 @@ export default function ProjectRow({ project }) {
         </button>
         {project.role === 'admin' && <button type="button" onClick={() => setInviting(true)} className="inline-flex h-9 items-center gap-2 rounded-md bg-[#292a2c] px-3 text-sm font-medium text-slate-100 transition hover:bg-[#343537]" title="Invite project members"><UserPlus className="h-4 w-4 text-slate-400" />Invite</button>}
       </div>
-      {inviting && <InviteMembersModal scope="project" projectId={project._id} projectName={project.name} onClose={() => setInviting(false)} />}
+      {inviting && <InviteMembersModal scope="project" projectId={project._id} projectName={project.name} workspaceId={workspaceId ?? undefined} onClose={() => setInviting(false)} />}
     </div>
   )
 }

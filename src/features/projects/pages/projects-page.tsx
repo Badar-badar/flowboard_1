@@ -6,8 +6,10 @@ import ProjectsTable from '../components/projects-table'
 import { PATHS } from '../../../app/paths'
 import Dropdown from '../../../components/ui/dropdown'
 import Avatar from '../../../components/ui/avatar'
-import { useWorkspace } from '../../workspace/hooks/use-workspace'
 import { useAuth } from '../../auth/hooks/use-auth'
+import type { IProjects } from '../types/projects.types'
+
+interface Person { id: string; name: string; email: string }
 
 const statuses = [
   { value: 'active', label: 'Active' },
@@ -15,58 +17,47 @@ const statuses = [
   { value: 'completed', label: 'Completed' },
 ]
 
-function asPerson(value, fallback = null) {
+function asPerson(value: unknown, fallback: string | null = null): Person | null {
   if (typeof value === 'string') {
-    const email = value.includes('@') ? value : ''
-    return { id: value, name: email || fallback || 'Unknown user', email }
+    const email = value.includes('@') ? value.trim().toLowerCase() : ''
+    return { id: email || value, name: email || fallback || 'Unknown user', email }
   }
   if (!value || typeof value !== 'object') return fallback ? asPerson(fallback) : null
-  const id = value._id ?? value.uid ?? value.userId ?? value.email
-  if (!id) return fallback ? asPerson(fallback) : null
+  const person = value as IProjects.Member
+  const rawId = person._id ?? person.uid ?? person.userId ?? person.email
+  if (!rawId) return fallback ? asPerson(fallback) : null
+  const email = typeof person.email === 'string' ? person.email.trim().toLowerCase() : ''
   return {
-    id: String(id),
-    name: value.name ?? value.displayName ?? value.email ?? fallback ?? (String(id).includes('@') ? String(id) : `Member ${String(id).slice(-4)}`),
-    email: value.email ?? (typeof fallback === 'string' && fallback.includes('@') ? fallback : ''),
+    id: email || String(rawId),
+    name: person.name ?? person.displayName ?? email ?? fallback ?? (String(rawId).includes('@') ? String(rawId) : `Member ${String(rawId).slice(-4)}`),
+    email: email || (typeof fallback === 'string' && fallback.includes('@') ? fallback : ''),
   }
 }
 
-function getOwner(project) {
-  return asPerson(project.owner ?? project.createdBy)
+function getOwner(project: IProjects.Project): Person | null {
+  return asPerson(project.owner ?? project.createdBy ?? project.ownerId)
 }
 
 export default function Projects() {
   const navigate = useNavigate()
   const { projects, loaded, loading, error, refetch } = useProjects()
-  const { activeWorkspace } = useWorkspace()
   const { user } = useAuth()
   const [query, setQuery] = useState('')
   const [ownerQuery, setOwnerQuery] = useState('')
   const [memberQuery, setMemberQuery] = useState('')
-  const [selectedOwner, setSelectedOwner] = useState(null)
-  const [selectedMembers, setSelectedMembers] = useState([])
-  const [selectedStatus, setSelectedStatus] = useState(null)
-  const [modifiedDirection, setModifiedDirection] = useState('desc')
+  const [selectedOwner, setSelectedOwner] = useState<Person | null>(null)
+  const [selectedMembers, setSelectedMembers] = useState<Person[]>([])
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null)
+  const [modifiedDirection, setModifiedDirection] = useState<'desc' | 'asc'>('desc')
 
   const owners = useMemo(() => {
-    const ownerId = typeof activeWorkspace?.ownerId === 'string'
-      ? activeWorkspace.ownerId
-      : activeWorkspace?.ownerId?._id ?? activeWorkspace?.ownerId?.uid ?? activeWorkspace?.ownerId?.userId
-    const workspaceOwner = asPerson(activeWorkspace?.owner) ?? asPerson(
-      activeWorkspace?.ownerId,
-      activeWorkspace?.ownerEmail,
-    )
-    if (!workspaceOwner && !ownerId && !activeWorkspace?.ownerEmail) return []
-
-    const id = String(workspaceOwner?.id ?? ownerId ?? activeWorkspace.ownerEmail)
-    const isCurrentUser = user && [user.uid, user.email].includes(id)
-    return [{
-      id,
-      name: workspaceOwner?.name === id
-        ? activeWorkspace?.ownerName ?? (isCurrentUser ? user.displayName ?? user.email : 'Workspace owner')
-        : workspaceOwner?.name ?? activeWorkspace?.ownerName ?? 'Workspace owner',
-      email: workspaceOwner?.email || activeWorkspace?.ownerEmail || (isCurrentUser ? user.email ?? '' : ''),
-    }]
-  }, [activeWorkspace, user])
+    const uniqueOwners = new Map<string, Person>()
+    projects.forEach((project) => {
+      const owner = getOwner(project)
+      if (owner) uniqueOwners.set(owner.id, owner)
+    })
+    return [...uniqueOwners.values()]
+  }, [projects])
 
   const matchingOwners = useMemo(() => {
     const q = ownerQuery.trim().toLowerCase()
@@ -74,12 +65,20 @@ export default function Projects() {
   }, [owners, ownerQuery])
 
   const members = useMemo(() => {
-    const uniqueMembers = new Map()
+    const uniqueMembers = new Map<string, Person>()
     projects.forEach((project) => {
       const projectPeople = [...(project.members ?? []), getOwner(project)].filter(Boolean)
       projectPeople.forEach((member) => {
         const person = asPerson(member)
-        if (person) uniqueMembers.set(person.id, { ...uniqueMembers.get(person.id), ...person })
+        if (person) {
+          const previous = uniqueMembers.get(person.id)
+          uniqueMembers.set(person.id, {
+            ...previous,
+            ...person,
+            name: person.name || previous?.name || 'Unknown user',
+            email: person.email || previous?.email || '',
+          })
+        }
       })
     })
     if (user) {
@@ -98,9 +97,10 @@ export default function Projects() {
     const q = query.trim().toLowerCase()
     return projects.filter((project) => {
       const matchesQuery = !q || (project.name ?? '').toLowerCase().includes(q)
+      const owner = getOwner(project)
       const matchesOwner = !selectedOwner
-        || (typeof activeWorkspace?.ownerId === 'string' ? activeWorkspace.ownerId : activeWorkspace?.ownerId?._id ?? activeWorkspace?.ownerId?.uid ?? activeWorkspace?.ownerId?.userId) === selectedOwner.id
-        || activeWorkspace?.owner?.email?.toLowerCase() === selectedOwner.email?.toLowerCase()
+        || owner?.id === selectedOwner.id
+        || owner?.email?.toLowerCase() === selectedOwner.email?.toLowerCase()
       const projectPeople = [...(project.members ?? []), getOwner(project)].filter(Boolean)
       const projectMemberIds = projectPeople.map((member) => asPerson(member)?.id).filter(Boolean)
       const matchesMembers = selectedMembers.length === 0 || selectedMembers.every((member) => projectMemberIds.includes(member.id))
@@ -112,7 +112,7 @@ export default function Projects() {
       const bDate = new Date(b.updatedAt ?? b.updated_at ?? b.createdAt ?? b.created_at ?? 0).getTime()
       return modifiedDirection === 'desc' ? bDate - aDate : aDate - bDate
     })
-  }, [activeWorkspace, projects, query, selectedOwner, selectedMembers, selectedStatus, modifiedDirection])
+  }, [projects, query, selectedOwner, selectedMembers, selectedStatus, modifiedDirection])
 
   return (
     <section className="-mx-4 -mt-4 min-h-full md:-mx-5 md:-mt-5">
@@ -148,7 +148,7 @@ export default function Projects() {
                 onClick={() => { setOwnerQuery(''); toggle() }}
                 className={`inline-flex h-7 items-center gap-2 rounded-full border px-4 text-sm font-medium transition hover:bg-white/5 ${selectedOwner ? 'border-white/30 text-white' : 'border-white/15 text-slate-100'}`}
               >
-                {selectedOwner?.email ?? 'Owner'}<ChevronDown className="h-3 w-3 text-slate-400" />
+                {selectedOwner?.name ?? 'Owner'}<ChevronDown className="h-3 w-3 text-slate-400" />
               </button>
             )}
           >
@@ -183,8 +183,8 @@ export default function Projects() {
                       className="flex min-h-14 w-full items-center gap-3 px-1 text-left hover:bg-white/5"
                     >
                       <Avatar name={owner.name} className="ml-1 h-7 w-7" />
-                      <span className="min-w-16 text-sm text-slate-200">{owner.email || owner.name}</span>
-                      {owner.email && <span className="truncate text-sm text-slate-400">{owner.name}</span>}
+                      <span className="truncate text-sm text-slate-200">{owner.name}</span>
+                      {owner.email && <span className="truncate text-sm text-slate-400">{owner.email}</span>}
                     </button>
                   ))}
                   {matchingOwners.length === 0 && (

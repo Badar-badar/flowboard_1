@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react'
 
-export default function TaskCheck({ done, disabled, onToggle }) {
+export default function TaskCheck({ done, disabled, onToggle }: { done: boolean; disabled: boolean; onToggle: () => void }) {
   return (
     <button
       type="button"

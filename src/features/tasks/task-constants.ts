@@ -12,13 +12,15 @@ export const TASK_DUE_SECTIONS = [
   { id: 'overdue', label: 'Overdue' },
 ]
 
-export const addDaysToDateInput = (value, count) => {
+import type { ITasks } from './types/tasks.types'
+
+export const addDaysToDateInput = (value: string, count: number) => {
   const date = new Date(`${value}T00:00:00`)
   date.setDate(date.getDate() + count)
   return toDateInput(date)
 }
 
-export const getTaskDueSection = (task, today) => {
+export const getTaskDueSection = (task: ITasks.Task, today: string) => {
   if (!task.dueDate) return 'recent'
   const due = toDateInput(task.dueDate)
   if (due < today && task.status !== 'done') return 'overdue'
@@ -34,17 +36,17 @@ export const TASK_PRIORITIES = [
   { value: 'urgent', label: 'Urgent', className: 'bg-rose-500/20 text-rose-300' },
 ]
 
-export const priorityMeta = (value) =>
+export const priorityMeta = (value?: string) =>
   TASK_PRIORITIES.find((priority) => priority.value === value) ?? TASK_PRIORITIES[1]
 
-export const formatDate = (value) => {
+export const formatDate = (value?: string | null) => {
   if (!value) return ''
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return ''
   return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(date)
 }
 
-export const toDateInput = (value) => {
+export const toDateInput = (value?: string | Date | null) => {
   if (!value) return ''
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return ''
@@ -54,7 +56,7 @@ export const toDateInput = (value) => {
   return `${year}-${month}-${day}`
 }
 
-export const isOverdue = (task) => {
+export const isOverdue = (task?: Pick<ITasks.Task, 'dueDate' | 'status'> | null) => {
   if (!task?.dueDate || task.status === 'done') return false
   const dueDate = new Date(task.dueDate)
   if (Number.isNaN(dueDate.getTime())) return false

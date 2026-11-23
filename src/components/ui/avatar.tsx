@@ -6,12 +6,12 @@ const getInitials = (name = '') => {
     : words[0].slice(0, 2).toUpperCase()
 }
 
-export default function Avatar({ name = '', className = '' }) {
+export default function Avatar({ name = '', size = 'h-8 w-8', className = '' }: { name?: string; size?: string; className?: string }) {
   return (
     <span
       aria-label={name || 'Unknown member'}
       title={name || 'Unknown member'}
-      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-200 text-xs font-medium text-slate-800 ring-2 ring-[#1e1f21] ${className}`}
+      className={`flex ${size} shrink-0 items-center justify-center rounded-full bg-rose-200 text-xs font-medium text-slate-800 ring-2 ring-[#1e1f21] ${className}`}
     >
       {getInitials(name)}
     </span>

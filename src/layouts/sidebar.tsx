@@ -4,14 +4,15 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { PATHS } from '../app/paths'
 import AvatarMenu from './avatar-menu'
 import ProjectIcon from '../features/projects/components/project-icon'
+import type { LucideIcon } from 'lucide-react'
 
 import {
   LayoutGrid, Bot, Triangle, Map, User, Ellipsis,
-  Home, Bell, CircleCheck, ClipboardList, Folder,
+  Home, CircleCheck, ClipboardList,
   ChevronDown, Plus, CircleHelp, UserPlus,
 } from 'lucide-react'
 
-const railItems = [
+const railItems: { label: string; icon: LucideIcon; active?: boolean }[] = [
   { label: 'Work', icon: LayoutGrid, active: true },
   { label: 'Agents', icon: Bot },
   { label: 'Strategy', icon: Triangle },
@@ -19,7 +20,12 @@ const railItems = [
   { label: 'People', icon: User },
 ]
 
-function RailButton({ label, icon: Icon, active, onClick }) {
+function RailButton({ label, icon: Icon, active = false, onClick }: {
+  label: string
+  icon: LucideIcon
+  active?: boolean
+  onClick?: () => void
+}) {
   return (
     <button
       type="button"
@@ -32,7 +38,7 @@ function RailButton({ label, icon: Icon, active, onClick }) {
           active ? 'bg-[#3a3b3d] text-white' : 'text-slate-400 group-hover:bg-white/10'
         }`}
       >
-        <Icon className="h-5 w-5" fill={active ? 'currentColor' : 'none'} />
+        <Icon className="h-6 w-6" strokeWidth={2} fill={active ? 'currentColor' : 'none'} />
       </span>
       <span className={`text-xs ${active ? 'text-white' : 'text-slate-400'}`}>
         {label}
@@ -41,7 +47,7 @@ function RailButton({ label, icon: Icon, active, onClick }) {
   )
 }
 
-function Rail({ panelOpen, onWorkClick }) {
+function Rail({ panelOpen, onWorkClick }: { panelOpen: boolean; onWorkClick: () => void }) {
   return (
     <div className="flex w-[59px] shrink-0 flex-col items-center bg-[#1e1f21] py-1">
       <div className="w-full space-y-0.5 px-2">
@@ -71,7 +77,7 @@ function Rail({ panelOpen, onWorkClick }) {
   )
 }
 
-const linkClass = ({ isActive }) =>
+const linkClass = ({ isActive }: { isActive: boolean }) =>
   `flex items-center gap-3 rounded-lg px-2 py-1.5 text-[13px] transition-colors ${
     isActive
       ? 'bg-[#3a3b3d] text-white'
@@ -91,10 +97,6 @@ function Panel() {
         <NavLink to={PATHS.home} end className={linkClass}>
           <Home className="h-5 w-5" /> Home
         </NavLink>
-        <NavLink to={PATHS.inbox} className={linkClass}>
-          <Bell className="h-5 w-5" /> Inbox
-        </NavLink>
-
         <hr className="!my-3 border-white/10" />
 
         <NavLink to={PATHS.tasks} className={linkClass}>
@@ -102,9 +104,6 @@ function Panel() {
         </NavLink>
         <NavLink to={PATHS.projects} end className={linkClass}>
           <ClipboardList className="h-5 w-5" /> Projects
-        </NavLink>
-        <NavLink to={PATHS.portfolios} className={linkClass}>
-          <Folder className="h-5 w-5" /> Portfolios
         </NavLink>
       </nav>
 
@@ -160,7 +159,7 @@ function Panel() {
 }
 
 /* ---------- Export ---------- */
-export default function Sidebar({ open, onWorkClick }) {
+export default function Sidebar({ open, onWorkClick }: { open: boolean; onWorkClick: () => void }) {
   return (
     <aside className="flex h-full shrink-0 bg-[#1e1f21] text-slate-200">
       <Rail panelOpen={open} onWorkClick={onWorkClick} />

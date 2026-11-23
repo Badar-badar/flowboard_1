@@ -2,9 +2,10 @@ import { useEffect } from 'react'
 import { useAppDispatch, useAppSelector } from '../../../app/hooks'
 import { fetchProjects, fetchProject, createProject, updateProject, deleteProject, toggleProjectFavorite } from '../store/projects.thunks'
 import { projectsSelectors } from '../store/projects.slice'
+import type { IProjects } from '../types/projects.types'
 
-// autoFetch: true in ONE always-mounted place (the sidebar), false elsewhere
-export function useProjects({ autoFetch = false } = {}) {
+// autoFetch: true in the always-mounted top bar; other consumers read its shared cache.
+export function useProjects({ autoFetch = false }: { autoFetch?: boolean } = {}) {
   const dispatch = useAppDispatch()
   const projects = useAppSelector(projectsSelectors.selectAll)
   const { loaded, loading, creating, error } = useAppSelector((s) => s.projects)
@@ -21,18 +22,20 @@ export function useProjects({ autoFetch = false } = {}) {
     creating,
     error,
     refetch: () => activeId ? dispatch(fetchProjects(activeId)) : Promise.resolve(null),
-    addProject: (data) => dispatch(createProject(data)).unwrap(),
-    editProject: (id, changes) => dispatch(updateProject({ id, changes })).unwrap(),
-    removeProject: (id) => dispatch(deleteProject(id)).unwrap(),
-    toggleFavorite: (id) => dispatch(toggleProjectFavorite(id)).unwrap(),
+    addProject: (data: IProjects.CreatePayload) => dispatch(createProject(data)).unwrap(),
+    editProject: (id: string, changes: IProjects.UpdatePayload) => dispatch(updateProject({ id, changes })).unwrap(),
+    removeProject: (id: string) => dispatch(deleteProject(id)).unwrap(),
+    toggleFavorite: (id: string) => dispatch(toggleProjectFavorite(id)).unwrap(),
   }
 }
 
-export function useProject(id) {
+export function useProject(id?: string) {
   const dispatch = useAppDispatch()
-  const project = useAppSelector((s) => projectsSelectors.selectById(s, id))
+  const project = useAppSelector((s) => id ? projectsSelectors.selectById(s, id) : undefined)
   const activeId = useAppSelector((s) => s.workspace.activeId)
 
-  const load = () => dispatch(fetchProject(id)).unwrap()
+  const load = () => id
+    ? dispatch(fetchProject(id)).unwrap()
+    : Promise.reject(new Error('Project ID is required'))
   return { project, load, activeId }
 }

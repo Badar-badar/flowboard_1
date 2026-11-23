@@ -4,21 +4,16 @@ import { useAppDispatch } from '../app/hooks'
 import { useAuth } from '../features/auth/hooks/use-auth'
 import { useWorkspace } from '../features/workspace/hooks/use-workspace'
 import { fetchWorkspaces } from '../features/workspace/store/workspace.thunks'
-import { fetchProjects } from '../features/projects/store/projects.thunks'
 import { PATHS } from '../app/paths'
 
 export default function WorkspaceGate() {
   const dispatch = useAppDispatch()
   const { user } = useAuth()
-  const { loaded, loading, workspaces, activeId, error } = useWorkspace()
+  const { loaded, loading, workspaces, error } = useWorkspace()
 
   useEffect(() => {
     if (user && !loaded) dispatch(fetchWorkspaces())
   }, [user, loaded, dispatch])
-
-  useEffect(() => {
-    if (user && loaded && workspaces.length > 0 && activeId) dispatch(fetchProjects(activeId))
-  }, [user, loaded, activeId, workspaces.length, dispatch])
 
   if (error && !loading) {
     return (

@@ -5,8 +5,10 @@ import Dropdown from '../../../components/ui/dropdown'
 import { useAuth } from '../../auth/hooks/use-auth'
 import { useProjectMembers } from '../../members/hooks/use-project-members'
 import { commentsApi, type TaskComment } from '../api/comments.api'
+import type { FormEvent } from 'react'
+import type { IMembers } from '../../members/types/members.types'
 
-const roleCanComment = (role) => ['admin', 'editor', 'commenter'].includes(role)
+const roleCanComment = (role?: string) => ['admin', 'editor', 'commenter'].includes(role ?? '')
 const authorObject = (comment: TaskComment) => typeof comment.authorId === 'object' ? comment.authorId : null
 const authorName = (comment: TaskComment) => {
   const author = authorObject(comment)
@@ -28,7 +30,12 @@ const timeLabel = (value?: string) => {
   return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(date)
 }
 
-export default function TaskComments({ taskId, projectId, role }) {
+const messageOf = (error: unknown, fallback: string) =>
+  error && typeof error === 'object' && 'message' in error && typeof error.message === 'string'
+    ? error.message
+    : fallback
+
+export default function TaskComments({ taskId, projectId, role }: { taskId: string; projectId: string; role?: string }) {
   const { user } = useAuth()
   const { members, meId } = useProjectMembers(projectId)
   const [comments, setComments] = useState<TaskComment[]>([])
@@ -39,7 +46,7 @@ export default function TaskComments({ taskId, projectId, role }) {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const canComment = roleCanComment(role)
-  const currentMember = useMemo(() => members.find((member) => member._id === meId), [members, meId])
+  const currentMember = useMemo(() => members.find((member: IMembers.Member) => member._id === meId), [members, meId])
 
   useEffect(() => {
     let active = true
@@ -53,13 +60,13 @@ export default function TaskComments({ taskId, projectId, role }) {
     return () => { active = false }
   }, [taskId])
 
-  const isMine = (comment) => {
+  const isMine = (comment: TaskComment) => {
     const id = authorId(comment)
     const memberUid = currentMember?.uid ?? currentMember?.userId
     return (id && [meId, user?.uid, memberUid].filter(Boolean).map(String).includes(String(id))) || authorObject(comment)?.email?.toLowerCase() === user?.email?.toLowerCase()
   }
 
-  const create = async (event) => {
+  const create = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const body = draft.trim()
     if (!body || sending) return
@@ -68,27 +75,27 @@ export default function TaskComments({ taskId, projectId, role }) {
       const response = await commentsApi.create(taskId, body)
       setComments((current) => [...current, response.data])
       setDraft('')
-    } catch (requestError) { setError(requestError?.message ?? 'Could not post comment') }
+    } catch (requestError) { setError(messageOf(requestError, 'Could not post comment')) }
     finally { setSending(false) }
   }
 
-  const saveEdit = async (comment) => {
+  const saveEdit = async (comment: TaskComment) => {
     const body = editDraft.trim()
     if (!body) return
     try {
       const response = await commentsApi.update(comment._id, body)
       setComments((current) => current.map((item) => item._id === comment._id ? response.data : item))
       setEditingId(null); setEditDraft(''); setError('')
-    } catch (requestError) { setError(requestError?.message ?? 'Could not update comment') }
+    } catch (requestError) { setError(messageOf(requestError, 'Could not update comment')) }
   }
 
-  const remove = async (comment) => {
+  const remove = async (comment: TaskComment) => {
     if (!window.confirm('Delete this comment?')) return
     try {
       await commentsApi.remove(comment._id)
       setComments((current) => current.filter((item) => item._id !== comment._id))
       setError('')
-    } catch (requestError) { setError(requestError?.message ?? 'Could not delete comment') }
+    } catch (requestError) { setError(messageOf(requestError, 'Could not delete comment')) }
   }
 
   return (
@@ -115,7 +122,7 @@ export default function TaskComments({ taskId, projectId, role }) {
       {canComment && <form onSubmit={create} className="mt-4 flex items-start gap-3">
         <Avatar name={user?.displayName ?? user?.email ?? 'You'} className="h-8 w-8" />
         <div className="min-w-0 flex-1 rounded-lg border border-white/15 bg-[#252628] focus-within:border-white/30">
-          <textarea value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={2000} rows={2} placeholder="Write a comment..." className="w-full resize-y bg-transparent px-3 py-2.5 text-sm leading-5 text-slate-100 outline-none placeholder:text-slate-500" onKeyDown={(event) => { if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') create(event) }} />
+          <textarea value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={2000} rows={2} placeholder="Write a comment..." className="w-full resize-y bg-transparent px-3 py-2.5 text-sm leading-5 text-slate-100 outline-none placeholder:text-slate-500" onKeyDown={(event) => { if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); event.currentTarget.form?.requestSubmit() } }} />
           <div className="flex items-center justify-between border-t border-white/5 px-2 py-1.5"><span className="text-[11px] text-slate-500">Ctrl + Enter to send</span><button type="submit" disabled={sending || !draft.trim()} aria-label="Send comment" className="inline-flex items-center gap-1.5 rounded-md bg-blue-500 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-40"><Send className="h-3.5 w-3.5" />{sending ? 'Sending...' : 'Send'}</button></div>
         </div>
       </form>}

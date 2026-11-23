@@ -2,10 +2,17 @@ import { useState } from 'react'
 import { User, X } from 'lucide-react'
 import Dropdown from '../../../components/ui/dropdown'
 import Avatar from '../../../components/ui/avatar'
+import type { IMembers } from '../../members/types/members.types'
 
-export default function AssigneePicker({ members, assigneeId, canEdit, onChange, showName = true }) {
+export default function AssigneePicker({ members, assigneeId, canEdit, onChange, showName = true }: {
+  members: IMembers.Member[]
+  assigneeId?: string | null
+  canEdit: boolean
+  onChange: (memberId: string | null) => void
+  showName?: boolean
+}) {
   const [query, setQuery] = useState('')
-  const current = members.find((m) => m._id === assigneeId)
+  const current = members.find((member) => member._id === assigneeId)
 
   const display = current ? (
     <span className="flex items-center gap-2">
@@ -20,7 +27,7 @@ export default function AssigneePicker({ members, assigneeId, canEdit, onChange,
 
   if (!canEdit) return <div className="flex items-center">{display}</div>
 
-  const list = members.filter((m) => (m.name + m.email).toLowerCase().includes(query.toLowerCase()))
+  const list = members.filter((member) => `${member.name ?? ''}${member.email ?? ''}`.toLowerCase().includes(query.toLowerCase()))
 
   return (
     <div onClick={(e) => e.stopPropagation()}>
@@ -40,16 +47,16 @@ export default function AssigneePicker({ members, assigneeId, canEdit, onChange,
               className="mx-2 mb-1 mt-1 w-[calc(100%-1rem)] rounded-md border border-white/15 bg-white/5 px-2 py-1.5 text-sm text-white outline-none"
             />
             <ul className="max-h-56 overflow-y-auto">
-              {list.map((m) => (
-                <li key={m._id}>
+              {list.map((member) => (
+                <li key={member._id}>
                   <button
-                    onClick={() => { onChange(m._id); close() }}
+                    onClick={() => { if (member._id) onChange(member._id); close() }}
                     className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-white/5"
                   >
-                    <Avatar name={m.name} size="h-7 w-7" className="ring-0" />
+                    <Avatar name={member.name} size="h-7 w-7" className="ring-0" />
                     <span className="min-w-0">
-                      <span className="block truncate text-sm text-white">{m.name}</span>
-                      <span className="block truncate text-xs text-slate-400">{m.email}</span>
+                      <span className="block truncate text-sm text-white">{member.name}</span>
+                      <span className="block truncate text-xs text-slate-400">{member.email}</span>
                     </span>
                   </button>
                 </li>

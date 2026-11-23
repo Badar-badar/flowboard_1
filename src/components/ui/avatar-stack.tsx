@@ -1,6 +1,8 @@
 import Avatar from './avatar'
 
-export default function AvatarStack({ members = [], total = members.length }) {
+interface AvatarStackMember { _id?: string; name?: string }
+
+export default function AvatarStack({ members = [], total = members.length }: { members?: AvatarStackMember[]; total?: number }) {
   const extra = total - members.length
   return (
     <div className="flex items-center -space-x-2">

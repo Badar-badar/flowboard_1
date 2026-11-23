@@ -10,6 +10,11 @@ import { useWorkspace } from '../../workspace/hooks/use-workspace'
 import { useAuth } from '../../auth/hooks/use-auth'
 import { workspaceApi } from '../../workspace/api/workspace.api'
 import { membersApi } from '../../members/api/members.api'
+import type { IProjects } from '../types/projects.types'
+import type { FormEvent } from 'react'
+
+const getErrorMessage = (error: unknown) =>
+  error && typeof error === 'object' && 'message' in error && typeof error.message === 'string' ? error.message : ''
 
 export default function NewProject() {
   const navigate = useNavigate()
@@ -23,13 +28,13 @@ export default function NewProject() {
   const [nameTouched, setNameTouched] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
-  const [access, setAccess] = useState('workspace')
+  const [access, setAccess] = useState<'workspace' | 'private'>('workspace')
   const [accessMenuOpen, setAccessMenuOpen] = useState(false)
-  const [createdProject, setCreatedProject] = useState(null)
+  const [createdProject, setCreatedProject] = useState<IProjects.Project | null>(null)
   const nameInvalid = name.trim().length < 2
   const showNameError = (nameTouched || submitted) && nameInvalid
 
-  const onSubmit = async (event) => {
+  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setSubmitted(true)
     const projectName = name.trim()
@@ -43,10 +48,10 @@ export default function NewProject() {
       }
       const project = await addProject({ name: projectName, color })
       setCreatedProject(project)
-      if (access === 'workspace') {
+      if (access === 'workspace' && workspaceId) {
         const workspaceMembers = (await workspaceApi.getMembers(workspaceId)).data ?? []
         const otherMembers = workspaceMembers.filter((member) => member.email?.toLowerCase() !== user?.email?.toLowerCase())
-        const results = await Promise.allSettled(otherMembers.map((member) => membersApi.addToProject(project._id, { email: member.email, role: 'editor' })))
+        const results = await Promise.allSettled(otherMembers.filter((member): member is typeof member & { email: string } => Boolean(member.email)).map((member) => membersApi.addToProject(project._id, { email: member.email, role: 'editor' })))
         const failedCount = results.filter((result) => result.status === 'rejected').length
         if (failedCount) {
           setError(`Project created. ${failedCount} workspace member${failedCount === 1 ? '' : 's'} could not be added. Open the project and invite them from Share.`)
@@ -56,8 +61,8 @@ export default function NewProject() {
       navigate(PATHS.projectDetail(project._id), { replace: true })
     } catch (err) {
       if (createdProject) {
-        setError(`Project created, but workspace access could not be set up. Open the project and invite members from Share. ${err?.message ?? ''}`)
-      } else setError(typeof err === 'string' ? err : err?.message || 'Could not create project')
+        setError(`Project created, but workspace access could not be set up. Open the project and invite members from Share. ${getErrorMessage(err)}`)
+      } else setError(typeof err === 'string' ? err : getErrorMessage(err) || 'Could not create project')
     }
   }
 

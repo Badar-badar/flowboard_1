@@ -8,10 +8,17 @@ import { useProjects } from '../../projects/hooks/use-projects'
 import { addDaysToDateInput, formatDate, getTaskDueSection, isOverdue, TASK_DUE_SECTIONS, toDateInput } from '../task-constants'
 import { canEditTasks } from '../task-permissions'
 import { useWorkspace } from '../../workspace/hooks/use-workspace'
+import type { ITasks } from '../types/tasks.types'
+import type { IProjects } from '../../projects/types/projects.types'
+import type { DragEndEvent } from '@dnd-kit/core'
+import type { ReactNode } from 'react'
 
 const COL = 'w-[304px]'
+type DueSectionId = 'recent' | 'today' | 'week' | 'later' | 'overdue'
+interface Lane { id: string; label: string; custom?: boolean; defaultDue?: string; tasks: ITasks.Task[]; taskCount?: number }
+type ProjectMap = Record<string, IProjects.Project | undefined>
 
-function readWorkspaceSetting(workspaceId, key, fallback) {
+function readWorkspaceSetting<T>(workspaceId: string | null | undefined, key: string, fallback: T): T {
   try {
     const value = localStorage.getItem(`my-tasks:${key}:${workspaceId ?? 'none'}`)
     return value ? JSON.parse(value) : fallback
@@ -20,7 +27,7 @@ function readWorkspaceSetting(workspaceId, key, fallback) {
   }
 }
 
-function CardContent({ task, project, showProject, showDue, today, onToggle }) {
+function CardContent({ task, project, showProject, showDue, today, onToggle }: { task: ITasks.Task; project?: IProjects.Project; showProject: boolean; showDue: boolean; today: string; onToggle: () => void }) {
   const due = task.dueDate ? toDateInput(task.dueDate) : ''
   const dueColor = isOverdue(task) ? 'text-red-400' : due === today ? 'text-green-400' : 'text-slate-400'
   const done = task.status === 'done'
@@ -77,7 +84,7 @@ function CardContent({ task, project, showProject, showDue, today, onToggle }) {
   )
 }
 
-function Card({ task, project, showProject, showDue, today, onOpen, onToggle, active = false }) {
+function Card({ task, project, showProject, showDue, today, onOpen, onToggle, active = false }: { task: ITasks.Task; project?: IProjects.Project; showProject: boolean; showDue: boolean; today: string; onOpen: (task: ITasks.Task) => void; onToggle: (task: ITasks.Task) => void; active?: boolean }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: task._id })
 
   return (
@@ -119,7 +126,7 @@ function Card({ task, project, showProject, showDue, today, onOpen, onToggle, ac
 }
 
 // Inline "new task" card, like Asana: Enter creates and keeps a fresh card open, Esc closes
-function InlineTaskCard({ column, projects, defaultProjectId, onCreate, onClose }) {
+function InlineTaskCard({ column, projects, defaultProjectId, onCreate, onClose }: { column: Lane; projects: IProjects.Project[]; defaultProjectId?: string; onCreate: (column: Lane, title: string, projectId: string, dueDate: string) => Promise<unknown>; onClose: () => void }) {
   const [title, setTitle] = useState('')
   const [projectId, setProjectId] = useState(defaultProjectId || projects[0]?._id || '')
   const [due, setDue] = useState(column.defaultDue ?? '')
@@ -205,7 +212,7 @@ function InlineTaskCard({ column, projects, defaultProjectId, onCreate, onClose 
   )
 }
 
-function Column({ column, composing, composer, children, onAdd, onRemove, onRename, onAddSection, hideEmptyColumns, onToggleHideEmpty, allCollapsed, onToggleAllCollapsed }) {
+function Column({ column, composing, composer, children, onAdd, onRemove, onRename, onAddSection, hideEmptyColumns, onToggleHideEmpty, allCollapsed, onToggleAllCollapsed }: { column: Lane; composing: boolean; composer: ReactNode; children: ReactNode; onAdd: (column: Lane) => void; onRemove: (column: Lane) => void; onRename: (column: Lane, title: string) => void; onAddSection: () => void; hideEmptyColumns: boolean; onToggleHideEmpty: () => void; allCollapsed: boolean; onToggleAllCollapsed: (collapsed: boolean) => void }) {
   // the whole column is the drop target, so empty columns are easy to hit
   const { setNodeRef, isOver } = useDroppable({ id: column.id })
   const collapsed = allCollapsed
@@ -244,7 +251,7 @@ function Column({ column, composing, composer, children, onAdd, onRemove, onRena
               <button type="button" onClick={() => { close(); onToggleAllCollapsed(!allCollapsed) }} className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm hover:bg-white/5"><Columns3 className="h-4 w-4 text-slate-400" />{allCollapsed ? 'Expand all columns' : 'Collapse all columns'}<ChevronRight className="ml-auto h-4 w-4 text-slate-500" /></button>
               <button type="button" onClick={() => { close(); onToggleHideEmpty() }} className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm hover:bg-white/5"><EyeOff className="h-4 w-4 text-slate-400" />{hideEmptyColumns ? 'Show empty columns' : 'Hide all empty columns'}</button>
               <div className="my-1 border-t border-white/10" />
-              <button type="button" disabled={column.taskCount > 0} onClick={() => { close(); onRemove(column) }} className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm text-rose-300 hover:bg-white/5 disabled:cursor-not-allowed disabled:text-slate-600"><Trash2 className="h-4 w-4" />Delete section</button>
+              <button type="button" disabled={(column.taskCount ?? column.tasks.length) > 0} onClick={() => { close(); onRemove(column) }} className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm text-rose-300 hover:bg-white/5 disabled:cursor-not-allowed disabled:text-slate-600"><Trash2 className="h-4 w-4" />Delete section</button>
             </div>}
           </Dropdown>
         </div>}
@@ -273,6 +280,17 @@ export function MyTasksBoard({
   composerLane, setComposerLane, editableProjects, defaultProjectId, onCreate,
   onOpen, onToggle, onMove, onAdd, onAddColumn, onRemoveColumn, onRenameColumn,
   hideEmptyColumns, onToggleHideEmpty,
+}: {
+  columns: Lane[]; projects: ProjectMap; showProjects: boolean; showDueDates: boolean; today: string;
+  selectedTaskId: string | null; addingSection: boolean; setAddingSection: (value: boolean) => void;
+  composerLane: string | null; setComposerLane: (value: string | null) => void;
+  editableProjects: IProjects.Project[]; defaultProjectId?: string;
+  onCreate: (column: Lane, title: string, projectId: string, dueDate: string) => Promise<unknown>;
+  onOpen: (task: ITasks.Task) => void; onToggle: (task: ITasks.Task) => void;
+  onMove: (task: ITasks.Task, column: Lane) => void; onAdd: (column: Lane) => void;
+  onAddColumn: (label: string) => void; onRemoveColumn: (column: Lane) => void;
+  onRenameColumn: (column: Lane, label: string) => void; hideEmptyColumns: boolean;
+  onToggleHideEmpty: () => void
 }) {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [name, setName] = useState('')
@@ -295,7 +313,7 @@ export function MyTasksBoard({
   const allTasks = columns.flatMap((c) => c.tasks)
   const activeTask = allTasks.find((t) => t._id === activeId)
 
-  const onDragEnd = ({ active, over }) => {
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
     setActiveId(null)
     if (!over) return
     const task = allTasks.find((t) => t._id === active.id)
@@ -303,7 +321,7 @@ export function MyTasksBoard({
     if (task && column) onMove(task, column)
   }
 
-  const submitSection = (e) => {
+  const submitSection = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const label = name.trim()
     if (!label) return
@@ -407,7 +425,7 @@ export function MyTasksBoard({
   )
 }
 
-function ProjectColumn({ section, tasks, project, role, onOpen, onToggle, onAdd, composing, onCreate, activeTaskId }) {
+function ProjectColumn({ section, tasks, project, role, onOpen, onToggle, onAdd, composing, onCreate, activeTaskId }: { section: Lane; tasks: ITasks.Task[]; project?: IProjects.Project; role?: string; onOpen: (task: ITasks.Task) => void; onToggle: (task: ITasks.Task) => void; onAdd: (sectionId: string | null) => void; composing: boolean; onCreate: (column: Lane, title: string, projectId: string, dueDate: string) => Promise<unknown>; activeTaskId: string | null }) {
   const { setNodeRef, isOver } = useDroppable({ id: section.id })
   const canAdd = canEditTasks(role)
   const column = { ...section, tasks }
@@ -430,7 +448,7 @@ function ProjectColumn({ section, tasks, project, role, onOpen, onToggle, onAdd,
   )
 }
 
-export default function TaskBoardView({ projectId, role, onOpen }) {
+export default function TaskBoardView({ projectId, role, onOpen }: { projectId: string; role?: string; onOpen: (taskId: string) => void }) {
   const { tasks, loaded, error, clearError, addTask, editTask } = useTasks(projectId)
   const { projects } = useProjects()
   const { activeId: workspaceId } = useWorkspace()
@@ -438,10 +456,10 @@ export default function TaskBoardView({ projectId, role, onOpen }) {
   const [composerStatus, setComposerStatus] = useState<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
-  const [customLanes, setCustomLanes] = useState(() => readWorkspaceSetting(workspaceId, 'lanes', []))
-  const [laneOverrides, setLaneOverrides] = useState(() => readWorkspaceSetting(workspaceId, 'overrides', {}))
-  const [laneNames, setLaneNames] = useState(() => readWorkspaceSetting(workspaceId, 'lane-names', {}))
-  const [deletedLanes, setDeletedLanes] = useState(() => readWorkspaceSetting(workspaceId, 'deleted-lanes', []))
+  const [customLanes, setCustomLanes] = useState<Array<{ id: string; label: string }>>(() => readWorkspaceSetting(workspaceId, 'lanes', []))
+  const [laneOverrides, setLaneOverrides] = useState<Record<string, string>>(() => readWorkspaceSetting(workspaceId, 'overrides', {}))
+  const [laneNames, setLaneNames] = useState<Record<string, string>>(() => readWorkspaceSetting(workspaceId, 'lane-names', {}))
+  const [deletedLanes, setDeletedLanes] = useState<string[]>(() => readWorkspaceSetting(workspaceId, 'deleted-lanes', []))
   const [hideEmptyColumns, setHideEmptyColumns] = useState(() => readWorkspaceSetting(workspaceId, 'hide-empty', false))
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
   useEffect(() => {
@@ -456,7 +474,7 @@ export default function TaskBoardView({ projectId, role, onOpen }) {
     ...TASK_DUE_SECTIONS.map((section) => ({ ...section, label: laneNames[section.id] ?? section.label, custom: false })),
     ...customLanes.map((section) => ({ ...section, custom: true })),
   ], [customLanes, laneNames])
-  const sectionForTask = (task) => {
+  const sectionForTask = (task: ITasks.Task): string => {
     const override = laneOverrides[task._id]
     if (override && customLanes.some((section) => section.id === override)) return override
     return getTaskDueSection(task, today)
@@ -471,7 +489,7 @@ export default function TaskBoardView({ projectId, role, onOpen }) {
   }).filter((section) => (!deletedLanes.includes(section.id) || section.tasks.length > 0) && (!hideEmptyColumns || section.tasks.length > 0)), [sections, tasks, laneOverrides, customLanes, today, deletedLanes, hideEmptyColumns])
   const activeTask = tasks.find((task) => task._id === activeId)
 
-  const createInColumn = async (column, title, _projectId, dueDate) => {
+  const createInColumn = async (column: Lane, title: string, _projectId: string, dueDate: string) => {
     const task = await addTask({ title, status: 'todo', dueDate: dueDate || undefined })
     if (column.custom) {
       setLaneOverrides((current) => {
@@ -481,8 +499,8 @@ export default function TaskBoardView({ projectId, role, onOpen }) {
       })
     }
   }
-  const toggleTask = (task) => editTask(task._id, { status: task.status === 'done' ? 'todo' : 'done' }).catch(() => {})
-  const moveTask = ({ active, over }) => {
+  const toggleTask = (task: ITasks.Task) => editTask(task._id, { status: task.status === 'done' ? 'todo' : 'done' }).catch(() => {})
+  const moveTask = ({ active, over }: DragEndEvent) => {
     setActiveId(null)
     if (!over) return
     const task = tasks.find((item) => item._id === String(active.id))
@@ -502,7 +520,8 @@ export default function TaskBoardView({ projectId, role, onOpen }) {
       localStorage.setItem(`my-tasks:overrides:${workspaceId}`, JSON.stringify(next))
       return next
     })
-    const dueDate = ({ recent: null, today, week: addDaysToDateInput(today, 3), later: addDaysToDateInput(today, 14), overdue: addDaysToDateInput(today, -1) })[section.id]
+    const dueDates: Record<DueSectionId, string | null> = { recent: null, today, week: addDaysToDateInput(today, 3), later: addDaysToDateInput(today, 14), overdue: addDaysToDateInput(today, -1) }
+    const dueDate = dueDates[section.id as DueSectionId]
     editTask(task._id, { dueDate }).catch(() => {})
   }
 

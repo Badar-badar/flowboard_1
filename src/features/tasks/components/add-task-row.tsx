@@ -3,7 +3,14 @@ import { ArrowDownUp, CalendarDays, ChevronDown, ChevronRight, CircleCheck, Plus
 import { formatDate } from '../task-constants'
 import { ROW_GRID } from './task-row'
 
-export default function AddTaskRow({ onAdd, compact = false, autoOpen = false, onClose }) {
+interface AddTaskRowProps {
+  onAdd: (title: string, dueDate?: string) => Promise<unknown>
+  compact?: boolean
+  autoOpen?: boolean
+  onClose?: () => void
+}
+
+export default function AddTaskRow({ onAdd, compact = false, autoOpen = false, onClose }: AddTaskRowProps) {
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [dueDate, setDueDate] = useState('')

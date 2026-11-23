@@ -9,7 +9,7 @@ export namespace ITasks {
     dependencies?: string[]
     title: string
     description?: string | null
-    status: Status
+    status: Status | string
     priority?: Priority
     assigneeId?: string | null
     createdBy?: string | { _id?: string; uid?: string; userId?: string; name?: string; displayName?: string; email?: string }

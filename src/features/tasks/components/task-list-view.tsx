@@ -8,8 +8,13 @@ import { useProjectMembers } from '../../members/hooks/use-project-members'
 import { useWorkspace } from '../../workspace/hooks/use-workspace'
 import { getTaskDueSection, TASK_DUE_SECTIONS, TASK_STATUSES, toDateInput } from '../task-constants'
 import { canEditTasks } from '../task-permissions'
+import type { ITasks } from '../types/tasks.types'
+import type { ComponentType, ReactNode } from 'react'
 
-function ToolbarMenu({ label, Icon, width = 'w-48', children }) {
+interface CustomLane { id: string; label: string }
+type DueSection = { id: string; label: string; custom: boolean }
+
+function ToolbarMenu({ label, Icon, width = 'w-48', children }: { label: string; Icon: ComponentType<{ className?: string }>; width?: string; children: ReactNode }) {
   return (
     <Dropdown width={width} align="right" trigger={({ open, toggle }) => (
       <button type="button" aria-expanded={open} onClick={toggle} className="inline-flex h-8 items-center gap-2 rounded-md px-2.5 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
@@ -21,7 +26,7 @@ function ToolbarMenu({ label, Icon, width = 'w-48', children }) {
   )
 }
 
-function readWorkspaceSetting(workspaceId, key, fallback) {
+function readWorkspaceSetting<T>(workspaceId: string | null | undefined, key: string, fallback: T): T {
   try {
     const value = localStorage.getItem(`my-tasks:${key}:${workspaceId ?? 'none'}`)
     return value ? JSON.parse(value) : fallback
@@ -30,12 +35,12 @@ function readWorkspaceSetting(workspaceId, key, fallback) {
   }
 }
 
-export default function TaskListView({ projectId, role, onOpen }) {
+export default function TaskListView({ projectId, role, onOpen }: { projectId: string; role?: string; onOpen: (taskId: string) => void }) {
   const { tasks, loaded, error, clearError, addTask, editTask, removeTask } = useTasks(projectId)
   const { members, meId } = useProjectMembers(projectId)
   const { activeId: workspaceId } = useWorkspace()
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
-  const [sections, setSections] = useState([
+  const [sections, setSections] = useState<Array<{ id: string; name: string }>>([
     { id: 'section-default-1', name: 'Untitled section' },
     { id: 'section-default-2', name: 'Untitled section' },
   ])
@@ -44,17 +49,17 @@ export default function TaskListView({ projectId, role, onOpen }) {
   const sectionEditCommitted = useRef(false)
   const [sectionQuickAddId, setSectionQuickAddId] = useState<string | null>(null)
   const [sectionTasks, setSectionTasks] = useState<Record<string, string[]>>({})
-  const [groupMode, setGroupMode] = useState('custom')
-  const [customLanes, setCustomLanes] = useState(() => readWorkspaceSetting(workspaceId, 'lanes', []))
-  const [laneOverrides, setLaneOverrides] = useState(() => readWorkspaceSetting(workspaceId, 'overrides', {}))
-  const [laneNames, setLaneNames] = useState(() => readWorkspaceSetting(workspaceId, 'lane-names', {}))
-  const [deletedLanes, setDeletedLanes] = useState(() => readWorkspaceSetting(workspaceId, 'deleted-lanes', []))
+  const [groupMode, setGroupMode] = useState<string>('custom')
+  const [customLanes, setCustomLanes] = useState<CustomLane[]>(() => readWorkspaceSetting(workspaceId, 'lanes', []))
+  const [laneOverrides, setLaneOverrides] = useState<Record<string, string>>(() => readWorkspaceSetting(workspaceId, 'overrides', {}))
+  const [laneNames, setLaneNames] = useState<Record<string, string>>(() => readWorkspaceSetting(workspaceId, 'lane-names', {}))
+  const [deletedLanes, setDeletedLanes] = useState<string[]>(() => readWorkspaceSetting(workspaceId, 'deleted-lanes', []))
   const [hideEmptyColumns, setHideEmptyColumns] = useState(() => readWorkspaceSetting(workspaceId, 'hide-empty', false))
   const [query, setQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [sortMode, setSortMode] = useState('created')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [sortMode, setSortMode] = useState<string>('created')
   const [hideCompleted, setHideCompleted] = useState(false)
   const canAdd = canEditTasks(role)
 
@@ -81,11 +86,11 @@ export default function TaskListView({ projectId, role, onOpen }) {
     setDeletedLanes(readWorkspaceSetting(workspaceId, 'deleted-lanes', []))
     setHideEmptyColumns(readWorkspaceSetting(workspaceId, 'hide-empty', false))
   }, [workspaceId])
-  const dueSections = useMemo(() => [
+  const dueSections = useMemo<DueSection[]>(() => [
     ...TASK_DUE_SECTIONS.map((section) => ({ ...section, label: laneNames[section.id] ?? section.label, custom: false })),
     ...customLanes.map((section) => ({ ...section, custom: true })),
   ], [customLanes, laneNames])
-  const taskSection = (task) => {
+  const taskSection = (task: ITasks.Task): string => {
     const override = laneOverrides[task._id]
     if (override && customLanes.some((section) => section.id === override)) return override
     return getTaskDueSection(task, today)
@@ -101,18 +106,18 @@ export default function TaskListView({ projectId, role, onOpen }) {
   const sectionTaskIds = new Set<string>(Object.values(sectionTasks).flat())
   const unsectionedTasks = visibleTasks.filter((task) => !sectionTaskIds.has(task._id))
 
-  const onEdit = (id, changes) => editTask(id, changes).catch(() => {})
-  const onDelete = async (task) => {
+  const onEdit = (id: string, changes: ITasks.UpdatePayload) => editTask(id, changes).catch(() => {})
+  const onDelete = async (task: ITasks.Task) => {
     if (!window.confirm(`Delete “${task.title}”? This cannot be undone.`)) return
     try { await removeTask(task._id) } catch { /* the task error banner shows the failure */ }
   }
 
-  const addSectionTask = async (sectionId, title, dueDate) => {
+  const addSectionTask = async (sectionId: string, title: string, dueDate?: string) => {
     const task = await addTask({ title, status: 'todo', dueDate })
     setSectionTasks((current) => ({ ...current, [sectionId]: [...(current[sectionId] ?? []), task._id] }))
   }
 
-  const saveSection = (sectionId) => {
+  const saveSection = (sectionId: string) => {
     if (editingSectionId !== sectionId || sectionEditCommitted.current) return
     sectionEditCommitted.current = true
     const name = sectionDraft.trim() || 'Untitled section'
@@ -142,14 +147,14 @@ export default function TaskListView({ projectId, role, onOpen }) {
         <div className="flex items-center gap-1">
           <ToolbarMenu label="Filter" Icon={ListFilter}>
             <div className="py-1">
-              {[['all', 'All tasks'], ...TASK_STATUSES.map((status) => [status.value, status.label])].map(([value, label]) => (
+              {([['all', 'All tasks'], ...TASK_STATUSES.map((status) => [status.value, status.label])] as Array<[string, string]>).map(([value, label]) => (
                 <button key={value} type="button" onClick={() => setStatusFilter(value)} className={`w-full px-3 py-2 text-left text-sm hover:bg-white/5 ${statusFilter === value ? 'text-blue-300' : 'text-slate-200'}`}>{label}</button>
               ))}
             </div>
           </ToolbarMenu>
           <ToolbarMenu label="Sort" Icon={ArrowDownUp}>
             <div className="py-1">
-              {[['created', 'Default order'], ['name', 'Task name'], ['due', 'Due date']].map(([value, label]) => (
+              {([['created', 'Default order'], ['name', 'Task name'], ['due', 'Due date']] as Array<[string, string]>).map(([value, label]) => (
                 <button key={value} type="button" onClick={() => setSortMode(value)} className={`w-full px-3 py-2 text-left text-sm hover:bg-white/5 ${sortMode === value ? 'text-blue-300' : 'text-slate-200'}`}>{label}</button>
               ))}
             </div>
@@ -193,7 +198,7 @@ export default function TaskListView({ projectId, role, onOpen }) {
           </button>
           {!collapsed[group.value] && <>
             {group.items.map((task) => <TaskRow key={task._id} task={task} role={role} meId={meId} members={members} active={activeTaskId === task._id} onOpen={(id) => { setActiveTaskId(id); onOpen(id) }} onEdit={onEdit} onDelete={onDelete} />)}
-            {canAdd && <AddTaskRow onAdd={(title, dueDate) => addTask({ title, status: group.value, dueDate })} />}
+            {canAdd && <AddTaskRow onAdd={(title, dueDate) => addTask({ title, status: group.value as ITasks.Status, dueDate })} />}
           </>}
         </section>
       )) : groupMode === 'due' ? dueGroups.map((group) => (

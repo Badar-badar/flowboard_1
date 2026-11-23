@@ -4,10 +4,21 @@ import TaskCheck from './task-check'
 import AssigneePicker from './assignee-picker'
 import DueDatePicker from './due-date-picker'
 import { canChangeStatus, canEditTasks } from '../task-permissions'
+import type { ITasks } from '../types/tasks.types'
+import type { IMembers } from '../../members/types/members.types'
 
 export const ROW_GRID = 'grid grid-cols-[minmax(0,4fr)_140px_140px_28px_minmax(0,1fr)] max-sm:grid-cols-[minmax(0,1fr)_28px]'
 
-export default function TaskRow({ task, role, meId, members, onOpen, onEdit, onDelete, active = false }) {
+export default function TaskRow({ task, role, meId, members, onOpen, onEdit, onDelete, active = false }: {
+  task: ITasks.Task
+  role?: string
+  meId?: string | null
+  members: IMembers.Member[]
+  onOpen: (taskId: string) => void
+  onEdit: (taskId: string, changes: ITasks.UpdatePayload) => void
+  onDelete: (task: ITasks.Task) => void
+  active?: boolean
+}) {
   const fullEdit = canEditTasks(role)
   const statusOk = canChangeStatus(role, task, meId)
   const done = task.status === 'done'

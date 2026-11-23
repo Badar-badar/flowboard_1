@@ -10,7 +10,7 @@ import { PATHS } from '../../../app/paths'
 
 export default function ProjectDetail() {
   const { id } = useParams()
-  const { project, load } = useProject(id)
+  const { project, load, activeId } = useProject(id)
   const [view, setView] = useState('list')
   const [state, setState] = useState('loading')
   const [params, setParams] = useSearchParams()
@@ -24,9 +24,9 @@ export default function ProjectDetail() {
       .catch((err) => !cancelled && setState(/not found/i.test(String(err)) ? 'notfound' : 'error'))
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id])
+  }, [id, activeId])
 
-  const openTask = (taskId) => setParams({ task: taskId })
+  const openTask = (taskId: string) => setParams({ task: taskId })
   const closeTask = () => setParams({})
 
   if (state === 'notfound') {

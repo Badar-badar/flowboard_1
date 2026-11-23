@@ -2,7 +2,7 @@ import ProjectIcon from './project-icon'
 
 const rowWidths = ['80%', '60%', '72%', '45%']
 
-export default function ProjectPreview({ name, color }) {
+export default function ProjectPreview({ name, color }: { name: string; color: string }) {
   return (
     <section className="overflow-hidden rounded-xl border border-white/10 bg-[#252628]">
       <h2 className="border-b border-white/10 px-5 py-3 text-sm font-medium text-slate-300">

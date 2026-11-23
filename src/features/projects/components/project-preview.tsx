@@ -1,6 +1,6 @@
 import ProjectIcon from './project-icon'
 
-export default function ProjectPreview({ name, color }) {
+export default function ProjectPreview({ name, color }: { name: string; color: string }) {
   const bar = 'rounded bg-[#3a3b3d]'
   return (
     <div className="p-8">

@@ -17,6 +17,7 @@ interface TasksState {
   loadedProjects: Record<string, boolean>
   myIds: string[]
   myLoaded: boolean
+  myRequestId: string | null
   backups: Record<string, Partial<ITasks.Task>>
   error: string | null
 }
@@ -25,6 +26,7 @@ const initialState = adapter.getInitialState<TasksState>({
   loadedProjects: {},  // projectId -> true after the first fetch
   myIds: [],
   myLoaded: false,
+  myRequestId: null,
   backups: {},         // requestId -> previous values, for optimistic rollback
   error: null,
 })
@@ -55,12 +57,23 @@ const tasksSlice = createSlice({
         s.error = payload
       })
 
-      .addCase(fetchMyTasks.fulfilled, (s, { payload }) => {
+      .addCase(fetchMyTasks.pending, (s, { meta }) => {
+        s.myRequestId = meta.requestId
+        s.myLoaded = false
+      })
+      .addCase(fetchMyTasks.fulfilled, (s, { payload, meta }) => {
+        if (s.myRequestId !== meta.requestId) return
+        s.myRequestId = null
         adapter.upsertMany(s, payload)
         s.myIds = payload.map((t) => t._id)
         s.myLoaded = true
       })
-      .addCase(fetchMyTasks.rejected, (s, { payload }) => { s.myLoaded = true; s.error = payload })
+      .addCase(fetchMyTasks.rejected, (s, { payload, meta }) => {
+        if (s.myRequestId !== meta.requestId) return
+        s.myRequestId = null
+        s.myLoaded = true
+        s.error = payload
+      })
 
       .addCase(fetchTask.fulfilled, (s, { payload }) => { adapter.upsertOne(s, payload) })
 

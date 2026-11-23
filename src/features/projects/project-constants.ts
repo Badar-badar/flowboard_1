@@ -9,5 +9,5 @@ export const PROJECT_STATUSES = [
   { value: 'completed', label: 'Completed', className: 'text-sky-400' },
 ]
 
-export const statusMeta = (value) =>
+export const statusMeta = (value: string) =>
   PROJECT_STATUSES.find((s) => s.value === value) ?? PROJECT_STATUSES[0]

@@ -3,19 +3,22 @@ import { Check, Pencil, X } from 'lucide-react'
 import Avatar from '../../../components/ui/avatar'
 import { useAuth } from '../../auth/hooks/use-auth'
 import { useProjectMembers } from '../../members/hooks/use-project-members'
-import { useWorkspace } from '../../workspace/hooks/use-workspace'
 import { useProjects } from '../hooks/use-projects'
 import InviteMembersModal from '../../members/components/invite-members-modal'
+import type { IProjects } from '../types/projects.types'
+import type { IMembers } from '../../members/types/members.types'
+import { useWorkspace } from '../../workspace/hooks/use-workspace'
 
-const nameOf = (person) => person?.name ?? person?.displayName ?? person?.email ?? 'You'
-const formattedTime = (value) => {
+type PersonLike = { name?: string; displayName?: string | null; email?: string | null } | null
+const nameOf = (person?: PersonLike) => person?.name ?? person?.displayName ?? person?.email ?? 'You'
+const formattedTime = (value?: string | null) => {
   if (!value) return 'Recently'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return 'Recently'
   return new Intl.DateTimeFormat(undefined, { weekday: 'long', hour: 'numeric', minute: '2-digit' }).format(date)
 }
 
-function ActivityEntry({ title, time, person, line = true, showAvatar = true }) {
+function ActivityEntry({ title, time, person, line = true, showAvatar = true }: { title: string; time: string; person?: PersonLike; line?: boolean; showAvatar?: boolean }) {
   return (
     <li className="relative flex gap-4 pb-8 last:pb-0">
       <div className="relative flex w-4 shrink-0 justify-center">
@@ -31,10 +34,10 @@ function ActivityEntry({ title, time, person, line = true, showAvatar = true }) 
   )
 }
 
-export default function ProjectOverview({ project }) {
+export default function ProjectOverview({ project }: { project: IProjects.Project }) {
   const { editProject } = useProjects()
   const { members, loaded } = useProjectMembers(project._id)
-  const { activeWorkspace } = useWorkspace()
+  const { activeWorkspace, activeId: workspaceId } = useWorkspace()
   const { user } = useAuth()
   const owner = project.owner ?? project.createdBy
   const ownerName = nameOf(owner ?? user)
@@ -100,7 +103,7 @@ export default function ProjectOverview({ project }) {
               <Avatar name={ownerName} className="h-12 w-12 text-sm" />
               <div className="min-w-0"><p className="truncate font-medium text-slate-100">{ownerName}</p><p className="text-sm text-slate-400">Project owner</p></div>
             </div>}
-            {loaded && members.filter((member) => {
+            {loaded && members.filter((member: IMembers.Member) => {
               const ownerId = owner?._id ?? owner?.uid ?? owner?.userId ?? owner?.email
               const memberId = member._id ?? member.uid ?? member.userId ?? member.email
               return !ownerId || String(memberId) !== String(ownerId)
@@ -120,7 +123,7 @@ export default function ProjectOverview({ project }) {
           <ActivityEntry title="Project created" time={formattedTime(createdAt)} person={owner ?? user} line={false} showAvatar={false} />
         </ol>
       </aside>
-      {inviting && <InviteMembersModal scope="project" projectId={project._id} projectName={project.name} onClose={() => setInviting(false)} />}
+      {inviting && <InviteMembersModal scope="project" projectId={project._id} projectName={project.name} workspaceId={workspaceId ?? undefined} onClose={() => setInviting(false)} />}
     </div>
   )
 }

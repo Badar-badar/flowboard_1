@@ -1,7 +1,12 @@
 import { Calendar } from 'lucide-react'
 import { formatDate, isOverdue, toDateInput } from '../task-constants'
+import type { ITasks } from '../types/tasks.types'
 
-export default function DueDatePicker({ task, canEdit, onChange }) {
+export default function DueDatePicker({ task, canEdit, onChange }: {
+  task: ITasks.Task
+  canEdit: boolean
+  onChange: (date: string | null) => void
+}) {
   const overdue = isOverdue(task)
 
   return (
