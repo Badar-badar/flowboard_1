@@ -52,6 +52,7 @@ export default function TaskListView({ projectId, role, onOpen }) {
   const [hideEmptyColumns, setHideEmptyColumns] = useState(() => readWorkspaceSetting(workspaceId, 'hide-empty', false))
   const [query, setQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState('all')
   const [sortMode, setSortMode] = useState('created')
   const [hideCompleted, setHideCompleted] = useState(false)
@@ -191,7 +192,7 @@ export default function TaskListView({ projectId, role, onOpen }) {
             <span className="text-xs text-slate-500">{group.items.length}</span>
           </button>
           {!collapsed[group.value] && <>
-            {group.items.map((task) => <TaskRow key={task._id} task={task} role={role} meId={meId} members={members} onOpen={onOpen} onEdit={onEdit} onDelete={onDelete} />)}
+            {group.items.map((task) => <TaskRow key={task._id} task={task} role={role} meId={meId} members={members} active={activeTaskId === task._id} onOpen={(id) => { setActiveTaskId(id); onOpen(id) }} onEdit={onEdit} onDelete={onDelete} />)}
             {canAdd && <AddTaskRow onAdd={(title, dueDate) => addTask({ title, status: group.value, dueDate })} />}
           </>}
         </section>
@@ -203,13 +204,13 @@ export default function TaskListView({ projectId, role, onOpen }) {
             <span className="text-xs text-slate-500">{group.items.length}</span>
           </button>
           {!collapsed[group.id] && <>
-            {group.items.map((task) => <TaskRow key={task._id} task={task} role={role} meId={meId} members={members} onOpen={onOpen} onEdit={onEdit} onDelete={onDelete} />)}
+            {group.items.map((task) => <TaskRow key={task._id} task={task} role={role} meId={meId} members={members} active={activeTaskId === task._id} onOpen={(id) => { setActiveTaskId(id); onOpen(id) }} onEdit={onEdit} onDelete={onDelete} />)}
             {canAdd && <AddTaskRow onAdd={(title, dueDate) => addTask({ title, status: 'todo', dueDate })} />}
           </>}
         </section>
       )) : (
         <>
-          {unsectionedTasks.map((task) => <TaskRow key={task._id} task={task} role={role} meId={meId} members={members} onOpen={onOpen} onEdit={onEdit} onDelete={onDelete} />)}
+          {unsectionedTasks.map((task) => <TaskRow key={task._id} task={task} role={role} meId={meId} members={members} active={activeTaskId === task._id} onOpen={(id) => { setActiveTaskId(id); onOpen(id) }} onEdit={onEdit} onDelete={onDelete} />)}
           {canAdd && <AddTaskRow onAdd={(title, dueDate) => addTask({ title, status: 'todo', dueDate })} />}
           {sections.map((section) => {
             const sectionItems = (sectionTasks[section.id] ?? []).flatMap((taskId) => {
@@ -257,7 +258,7 @@ export default function TaskListView({ projectId, role, onOpen }) {
                   </div>
                 </div>
                 {!collapsed[section.id] && <>
-                  {sectionItems.map((task) => <TaskRow key={task._id} task={task} role={role} meId={meId} members={members} onOpen={onOpen} onEdit={onEdit} onDelete={onDelete} />)}
+                  {sectionItems.map((task) => <TaskRow key={task._id} task={task} role={role} meId={meId} members={members} active={activeTaskId === task._id} onOpen={(id) => { setActiveTaskId(id); onOpen(id) }} onEdit={onEdit} onDelete={onDelete} />)}
                   {canAdd && <AddTaskRow autoOpen={sectionQuickAddId === section.id} onClose={() => setSectionQuickAddId(null)} onAdd={(title, dueDate) => addSectionTask(section.id, title, dueDate)} />}
                 </>}
               </section>

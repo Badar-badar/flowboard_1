@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { DndContext, DragOverlay, PointerSensor, pointerWithin, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
-import { CalendarDays, Check, ChevronDown, ChevronRight, Columns3, EyeOff, MoreHorizontal, Pencil, Plus, ThumbsUp, Trash2 } from 'lucide-react'
+import { CalendarDays, Check, ChevronDown, ChevronRight, Columns3, EyeOff, FileText, MoreHorizontal, Pencil, Plus, ThumbsUp, Trash2 } from 'lucide-react'
 import Dropdown from '../../../components/ui/dropdown'
 import TaskCheck from './task-check'
 import { useTasks } from '../hooks/use-tasks'
@@ -34,6 +34,26 @@ function CardContent({ task, project, showProject, showDue, today, onToggle }) {
         </p>
       </div>
 
+      {!!task.attachments?.length && <div className="mt-3 space-y-2">
+        {task.attachments.slice(0, 3).map((attachment) => (
+          <a
+            key={attachment._id}
+            href={attachment.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={attachment.fileName}
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
+            className="block overflow-hidden rounded-md border border-white/10 bg-black/15 hover:border-white/20"
+          >
+            {attachment.mimeType?.startsWith('image/')
+              ? <img src={attachment.url} alt={attachment.fileName} className="block h-28 w-full object-cover" />
+              : <span className="flex h-14 items-center justify-center bg-white/5"><FileText className="h-5 w-5 text-slate-400" /></span>}
+          </a>
+        ))}
+        {task.attachments.length > 3 && <span className="text-xs text-slate-400">+{task.attachments.length - 3} more</span>}
+      </div>}
+
       {showProject && project && (
         <span className="mt-3 inline-flex max-w-full items-center gap-1.5 rounded bg-white/10 py-0.5 pl-1 pr-2 text-xs text-slate-100">
           <span className="h-3.5 w-3.5 shrink-0 rounded-sm" style={{ backgroundColor: project.color || '#e879f9' }} />
@@ -57,7 +77,7 @@ function CardContent({ task, project, showProject, showDue, today, onToggle }) {
   )
 }
 
-function Card({ task, project, showProject, showDue, today, onOpen, onToggle }) {
+function Card({ task, project, showProject, showDue, today, onOpen, onToggle, active = false }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: task._id })
 
   return (
@@ -66,7 +86,8 @@ function Card({ task, project, showProject, showDue, today, onOpen, onToggle }) 
       {...attributes}
       {...listeners}
       onClick={() => onOpen(task)}
-      className={`group relative cursor-pointer rounded-lg border border-white/10 bg-[#2a2b2d] p-3 outline-none transition-colors hover:border-white/25 hover:bg-[#303133] focus-visible:border-blue-400 ${isDragging ? 'opacity-40' : ''}`}
+      aria-selected={active}
+      className={`group relative cursor-pointer rounded-lg border p-3 outline-none transition-colors ${active ? 'border-blue-400/70 bg-[#30343a] ring-1 ring-blue-400/40' : 'border-white/10 bg-[#2a2b2d] hover:border-white/25 hover:bg-[#303133]'} focus-visible:border-blue-400 ${isDragging ? 'opacity-40' : ''}`}
     >
       <div
         className="absolute right-1.5 top-1.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100"
@@ -247,6 +268,7 @@ function Column({ column, composing, composer, children, onAdd, onRemove, onRena
 
 export function MyTasksBoard({
   columns, projects, showProjects, showDueDates, today,
+  selectedTaskId,
   addingSection, setAddingSection,
   composerLane, setComposerLane, editableProjects, defaultProjectId, onCreate,
   onOpen, onToggle, onMove, onAdd, onAddColumn, onRemoveColumn, onRenameColumn,
@@ -334,6 +356,7 @@ export function MyTasksBoard({
                 today={today}
                 onOpen={onOpen}
                 onToggle={onToggle}
+                active={selectedTaskId === task._id}
               />
             ))}
           </Column>
@@ -384,7 +407,7 @@ export function MyTasksBoard({
   )
 }
 
-function ProjectColumn({ section, tasks, project, role, onOpen, onToggle, onAdd, composing, onCreate }) {
+function ProjectColumn({ section, tasks, project, role, onOpen, onToggle, onAdd, composing, onCreate, activeTaskId }) {
   const { setNodeRef, isOver } = useDroppable({ id: section.id })
   const canAdd = canEditTasks(role)
   const column = { ...section, tasks }
@@ -398,7 +421,7 @@ function ProjectColumn({ section, tasks, project, role, onOpen, onToggle, onAdd,
       </header>
       <div className={`asana-scroll mt-2 min-h-0 flex-1 overflow-y-auto rounded-lg p-2 ${isOver ? 'bg-[#2c2f35] ring-2 ring-blue-400/50' : 'bg-[#252628]'}`}>
         <div className="space-y-2">
-          {tasks.map((task) => <Card key={task._id} task={task} project={project} showProject={false} showDue today={toDateInput(new Date())} onOpen={onOpen} onToggle={onToggle} />)}
+          {tasks.map((task) => <Card key={task._id} task={task} project={project} showProject={false} showDue today={toDateInput(new Date())} onOpen={onOpen} onToggle={onToggle} active={task._id === activeTaskId} />)}
           {composing && <InlineTaskCard column={column} projects={project ? [project] : []} defaultProjectId={project?._id} onCreate={onCreate} onClose={() => onAdd(null)} />}
           {canAdd && <button type="button" onClick={() => onAdd(section.id)} className="flex h-9 w-full items-center gap-2 rounded-md px-2 text-sm text-slate-400 hover:bg-white/5 hover:text-slate-100"><Plus className="h-4 w-4" />Add task</button>}
         </div>
@@ -414,6 +437,7 @@ export default function TaskBoardView({ projectId, role, onOpen }) {
   const project = projects.find((item) => item._id === projectId)
   const [composerStatus, setComposerStatus] = useState<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [customLanes, setCustomLanes] = useState(() => readWorkspaceSetting(workspaceId, 'lanes', []))
   const [laneOverrides, setLaneOverrides] = useState(() => readWorkspaceSetting(workspaceId, 'overrides', {}))
   const [laneNames, setLaneNames] = useState(() => readWorkspaceSetting(workspaceId, 'lane-names', {}))
@@ -489,7 +513,7 @@ export default function TaskBoardView({ projectId, role, onOpen }) {
       {error && <div className="mb-2 flex items-center justify-between rounded-lg bg-rose-500/10 px-3 py-2 text-sm text-rose-300">{error}<button type="button" onClick={clearError} className="underline">Dismiss</button></div>}
       <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={({ active }) => setActiveId(String(active.id))} onDragEnd={moveTask} onDragCancel={() => setActiveId(null)}>
         <div className="asana-scroll flex min-h-0 flex-1 items-stretch gap-4 overflow-x-auto overflow-y-hidden pb-3 pt-2">
-          {columns.map((column) => <ProjectColumn key={column.id} section={column} tasks={column.tasks} project={project} role={role} onOpen={(task) => onOpen(task._id)} onToggle={toggleTask} onAdd={setComposerStatus} composing={composerStatus === column.id} onCreate={createInColumn} />)}
+          {columns.map((column) => <ProjectColumn key={column.id} section={column} tasks={column.tasks} project={project} role={role} onOpen={(task) => { setSelectedTaskId(task._id); onOpen(task._id) }} onToggle={toggleTask} onAdd={setComposerStatus} composing={composerStatus === column.id} onCreate={createInColumn} activeTaskId={selectedTaskId} />)}
         </div>
         <DragOverlay>{activeTask && <div className="w-[288px] rounded-lg border border-white/25 bg-[#303133] p-3 shadow-2xl"><CardContent task={activeTask} project={project} showProject={false} showDue today={toDateInput(new Date())} onToggle={() => {}} /></div>}</DragOverlay>
       </DndContext>

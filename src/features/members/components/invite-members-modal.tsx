@@ -25,7 +25,6 @@ export default function InviteMembersModal({ scope, projectId, projectName = 'pr
   const [accessOpen, setAccessOpen] = useState(false)
   const [accessLevel, setAccessLevel] = useState('private')
   const [copied, setCopied] = useState(false)
-  const [notifyOnNewTasks, setNotifyOnNewTasks] = useState(false)
 
   const candidates = useMemo(() => {
     const all = [...workspaceMembers, ...activeMembers]
@@ -123,7 +122,6 @@ export default function InviteMembersModal({ scope, projectId, projectName = 'pr
               <button type="submit" disabled={busy || loading || !email.trim()} className="h-11 rounded-lg border border-white/15 px-4 text-sm font-medium text-slate-100 transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40">{busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : 'Invite'}</button>
             </form>
             {error && <p role="alert" className="mt-2 text-sm text-rose-400">{error}</p>}{notice && <p role="status" className="mt-2 text-sm text-emerald-400">{notice}</p>}
-            <label className="mt-4 flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" disabled checked={notifyOnNewTasks} onChange={(event) => setNotifyOnNewTasks(event.target.checked)} className="h-4 w-4 accent-blue-500" />Notify when tasks are added to the project <span className="text-xs text-slate-500">(not supported yet)</span></label>
           </section>
 
           <section className="border-b border-white/10 px-7 py-6">

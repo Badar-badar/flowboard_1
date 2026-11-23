@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Check, ChevronDown, LockKeyhole, Users } from 'lucide-react'
+import { ArrowLeft, Check, ChevronDown, LockKeyhole, Users } from 'lucide-react'
 import { useProjects } from '../hooks/use-projects'
 import ColorPicker from '../components/color-picker'
 import ProjectPreview from '../components/project-preview-card'
@@ -65,7 +65,7 @@ export default function NewProject() {
     <div className="min-h-full bg-[#1e1f21] p-6 text-slate-200">
       <div className="mx-auto max-w-6xl">
       <Link to={PATHS.projects} className="mb-6 inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white">
-        <span aria-hidden="true">?</span> Projects
+        <ArrowLeft aria-hidden="true" className="h-4 w-4" /> Projects
       </Link>
       <h1 className="mb-8 text-3xl font-semibold text-white">Create a project</h1>
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-16">

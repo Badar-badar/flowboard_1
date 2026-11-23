@@ -12,8 +12,12 @@ export namespace ITasks {
     status: Status
     priority?: Priority
     assigneeId?: string | null
+    createdBy?: string | { _id?: string; uid?: string; userId?: string; name?: string; displayName?: string; email?: string }
+    createdById?: string
+    creator?: string | { _id?: string; uid?: string; userId?: string; name?: string; displayName?: string; email?: string }
     dueDate?: string | null
     createdAt?: string
+    created_at?: string
     attachments?: Attachment[]
   }
   export interface UpdatePayload extends Partial<Pick<Task, 'title' | 'description' | 'status' | 'priority' | 'assigneeId' | 'dueDate' | 'dependencies'>> { }

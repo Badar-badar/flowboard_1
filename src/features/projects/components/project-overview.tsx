@@ -66,7 +66,7 @@ export default function ProjectOverview({ project }) {
   }
 
   return (
-    <div className="grid h-[calc(100dvh-10rem)] min-h-[32rem] grid-cols-1 bg-[#1e1f21] lg:grid-cols-[minmax(0,1.5fr)_minmax(360px,1fr)]">
+    <div className="grid min-h-[calc(100dvh-12rem)] grid-cols-1 bg-[#1e1f21] lg:h-[calc(100dvh-10rem)] lg:min-h-[32rem] lg:grid-cols-[minmax(0,1.5fr)_minmax(360px,1fr)]">
       <main className="asana-scroll min-h-0 overflow-y-auto px-6 py-10 lg:px-10">
         <section>
           <div className="flex max-w-3xl items-center justify-between gap-4">

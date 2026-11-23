@@ -7,13 +7,13 @@ import { canChangeStatus, canEditTasks } from '../task-permissions'
 
 export const ROW_GRID = 'grid grid-cols-[minmax(0,4fr)_140px_140px_28px_minmax(0,1fr)] max-sm:grid-cols-[minmax(0,1fr)_28px]'
 
-export default function TaskRow({ task, role, meId, members, onOpen, onEdit, onDelete }) {
+export default function TaskRow({ task, role, meId, members, onOpen, onEdit, onDelete, active = false }) {
   const fullEdit = canEditTasks(role)
   const statusOk = canChangeStatus(role, task, meId)
   const done = task.status === 'done'
 
   return (
-    <div onClick={() => onOpen(task._id)} className={`${ROW_GRID} group cursor-pointer items-center border-b border-white/10 hover:bg-white/[0.045]`}>
+    <div onClick={() => onOpen(task._id)} aria-selected={active} className={`${ROW_GRID} group cursor-pointer items-center border-b border-white/10 ${active ? 'bg-blue-500/10 ring-1 ring-inset ring-blue-400/50' : 'hover:bg-white/[0.045]'}`}>
       <div className="flex min-w-0 items-center gap-3 py-2 pl-8 pr-3">
         <TaskCheck done={done} disabled={!statusOk} onToggle={() => onEdit(task._id, { status: done ? 'todo' : 'done' })} />
         <span className={`truncate text-[15px] ${done ? 'text-slate-500 line-through' : 'text-slate-100'}`}>{task.title}</span>

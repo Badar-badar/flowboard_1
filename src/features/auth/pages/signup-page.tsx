@@ -37,7 +37,7 @@ export default function Signup() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#1e1f21] px-4">
-      <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#252628] p-8">
+      <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#252628] p-5 sm:p-8">
         <div className="mb-6 flex items-center justify-center gap-2 text-white">
           <LayoutGrid className="h-7 w-7 text-rose-400" />
           <span className="text-2xl font-semibold">Flowboard</span>

@@ -28,6 +28,8 @@ export default function Home() {
   const { projects, loaded: projectsLoaded } = useProjects({ autoFetch: true })
   const { tasks, loaded: tasksLoaded, toggleDone } = useMyTasks()
   const [taskTab, setTaskTab] = useState('Upcoming')
+  const [weekRange, setWeekRange] = useState('week')
+  const [projectSort, setProjectSort] = useState('recent')
   const [openedTask, setOpenedTask] = useState<any>(null)
   const [creatingTask, setCreatingTask] = useState(false)
   const [error, setError] = useState('')
@@ -35,17 +37,27 @@ export default function Home() {
   const visibleTasks = useMemo(() => tasks.filter((task) => {
     if (taskTab === 'Completed') return task.status === 'done'
     if (taskTab === 'Overdue') return isOverdue(task)
-    return task.status !== 'done' && !isOverdue(task)
+    if (task.status === 'done' || isOverdue(task)) return false
+    if (weekRange === 'all') return true
+    const due = task.dueDate ? new Date(task.dueDate) : null
+    const now = new Date()
+    const weekEnd = new Date(now)
+    weekEnd.setDate(now.getDate() + 7)
+    return !due || due <= weekEnd
   }).sort((a, b) => {
     const aDate = a.dueDate ? new Date(a.dueDate).getTime() : Number.MAX_SAFE_INTEGER
     const bDate = b.dueDate ? new Date(b.dueDate).getTime() : Number.MAX_SAFE_INTEGER
     return aDate - bDate
-  }), [tasks, taskTab])
+  }), [tasks, taskTab, weekRange])
 
   const completedCount = tasks.filter((task) => task.status === 'done').length
   const collaboratorCount = new Set(tasks.flatMap((task) => projects.find((project) => project._id === task.projectId)?.members?.map((member) => member._id ?? member.uid).filter(Boolean) ?? [])).size
   const editableProject = projects.find((project) => canEditTasks(project.role))
-  const recentProjects = [...projects].sort((a, b) => new Date(b.createdAt ?? b.created_at ?? 0).getTime() - new Date(a.createdAt ?? a.created_at ?? 0).getTime())
+  const recentProjects = [...projects].sort((a, b) => projectSort === 'name'
+    ? (a.name ?? '').localeCompare(b.name ?? '')
+    : projectSort === 'updated'
+      ? new Date((b as any).updatedAt ?? (b as any).updated_at ?? b.createdAt ?? b.created_at ?? 0).getTime() - new Date((a as any).updatedAt ?? (a as any).updated_at ?? a.createdAt ?? a.created_at ?? 0).getTime()
+      : new Date(b.createdAt ?? b.created_at ?? 0).getTime() - new Date(a.createdAt ?? a.created_at ?? 0).getTime())
 
   const addTask = async () => {
     if (!editableProject || creatingTask) return
@@ -64,14 +76,14 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-full bg-[#1e1f21] px-5 py-7 text-slate-200 md:px-8 md:py-8 xl:px-9">
+    <div className="min-h-full bg-[#1e1f21] px-3 py-5 text-slate-200 sm:px-5 md:px-8 md:py-8 xl:px-9">
       <div className="mx-auto max-w-[1440px]">
         <p className="mb-3 text-[16px] font-semibold leading-6 text-slate-200">{formatToday()}</p>
         <div className="mb-7 flex flex-wrap items-center justify-between gap-x-6 gap-y-4 lg:flex-nowrap">
           <h1 className="min-w-0 shrink-0 text-[32px] font-normal leading-[1.2] tracking-tight text-slate-100 md:text-[36px]">Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {user?.displayName?.split(' ')[0] ?? user?.email?.split('@')[0] ?? 'there'}</h1>
           <div className="flex min-w-0 flex-wrap items-center justify-start gap-x-4 gap-y-2 text-[14px] text-slate-400 lg:flex-nowrap lg:justify-end">
-            <Dropdown width="w-40" trigger={({ open, toggle }) => <button type="button" aria-expanded={open} onClick={toggle} className="inline-flex items-center gap-1.5 font-medium hover:text-white">My week <ChevronDown className="h-4 w-4" /></button>}>
-              <div className="px-3 py-2 text-sm text-slate-400">Your tasks for this week</div>
+            <Dropdown width="w-40" trigger={({ open, toggle }) => <button type="button" aria-expanded={open} onClick={toggle} className="inline-flex items-center gap-1.5 font-medium hover:text-white">{weekRange === 'week' ? 'My week' : 'All upcoming'} <ChevronDown className="h-4 w-4" /></button>}>
+              {({ close }) => <div className="py-1">{[['week', 'This week'], ['all', 'All upcoming']].map(([value, label]) => <button key={value} type="button" onClick={() => { setWeekRange(value); close() }} className={`w-full px-3 py-2 text-left text-sm hover:bg-white/5 ${weekRange === value ? 'text-blue-300' : 'text-slate-200'}`}>{label}</button>)}</div>}
             </Dropdown>
             <span className="inline-flex items-center gap-1.5"><Check className="h-4 w-4" />{completedCount} tasks completed</span>
             <span className="inline-flex items-center gap-1.5"><Users className="h-4 w-4" />{collaboratorCount || 1} collaborators</span>
@@ -86,7 +98,7 @@ export default function Home() {
             <div className="flex items-center justify-between gap-3 px-6 pt-6">
               <div className="flex min-w-0 items-center gap-3.5">
                 <Avatar name={user?.displayName ?? user?.email ?? ''} size="h-9 w-9" className="text-xs ring-0" />
-                <h2 className="text-[24px] font-semibold leading-8 text-slate-100">My tasks</h2>
+                <h2 className="text-xl font-semibold leading-8 text-slate-100 sm:text-[24px]">My tasks</h2>
                 <LockKeyhole className="h-4 w-4 text-slate-400" aria-label="Private tasks" />
               </div>
               <Dropdown width="w-48" align="right" trigger={({ open, toggle }) => <button type="button" aria-label="My tasks options" aria-expanded={open} onClick={toggle} className="rounded p-2 text-slate-400 hover:bg-white/5 hover:text-white"><MoreHorizontal className="h-5 w-5" /></button>}>
@@ -113,7 +125,9 @@ export default function Home() {
 
           <section className="min-h-[560px] rounded-xl border border-white/10 bg-[#292a2c] px-6 py-6 shadow-sm">
             <div className="mb-5 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-5"><h2 className="text-[24px] font-semibold leading-8 text-slate-100">Projects</h2><Dropdown width="w-36" trigger={({ open, toggle }) => <button type="button" aria-expanded={open} onClick={toggle} className="inline-flex items-center gap-1 text-[15px] font-medium text-slate-400 hover:text-white">Recents <ChevronDown className="h-4 w-4" /></button>}><div className="px-3 py-2 text-sm text-slate-400">Sorted by recently created</div></Dropdown></div>
+              <div className="flex items-center gap-5"><h2 className="text-[24px] font-semibold leading-8 text-slate-100">Projects</h2><Dropdown width="w-40" trigger={({ open, toggle }) => <button type="button" aria-expanded={open} onClick={toggle} className="inline-flex items-center gap-1 text-[15px] font-medium text-slate-400 hover:text-white">{projectSort === 'name' ? 'Name' : projectSort === 'updated' ? 'Recently updated' : 'Recents'} <ChevronDown className="h-4 w-4" /></button>}>
+                {({ close }) => <div className="py-1">{[['recent', 'Recently created'], ['updated', 'Recently updated'], ['name', 'Name']].map(([value, label]) => <button key={value} type="button" onClick={() => { setProjectSort(value); close() }} className={`w-full px-3 py-2 text-left text-sm hover:bg-white/5 ${projectSort === value ? 'text-blue-300' : 'text-slate-200'}`}>{label}</button>)}</div>}
+              </Dropdown></div>
               <Dropdown width="w-44" align="right" trigger={({ open, toggle }) => <button type="button" aria-label="Project options" aria-expanded={open} onClick={toggle} className="rounded p-2 text-slate-400 hover:bg-white/5 hover:text-white"><MoreHorizontal className="h-5 w-5" /></button>}><Link to={PATHS.projects} className="block px-3 py-2 text-sm text-slate-200 hover:bg-white/5">View all projects</Link></Dropdown>
             </div>
             <Link to={PATHS.newProject} className="mb-4 flex h-[76px] items-center gap-5 rounded-lg px-4 text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-dashed border-slate-400"><Plus className="h-6 w-6" /></span><span className="text-[16px] font-semibold">Create project</span></Link>
@@ -121,7 +135,7 @@ export default function Home() {
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: project.color || '#d946ef' }}><CircleCheck className="h-6 w-6 text-[#1e1f21]" />
               </span>
               <span className="min-w-0"><span className="block truncate text-[16px] font-semibold leading-6 text-slate-100">{project.name}</span>{(project.taskStats?.total ?? 0) - (project.taskStats?.done ?? 0) > 0 && <span className="mt-0.5 block text-[14px] leading-5 text-slate-400">{project.taskStats!.total - project.taskStats!.done} task{project.taskStats!.total - project.taskStats!.done === 1 ? '' : 's'} due soon</span>}</span>
-              <span className="ml-auto flex -space-x-2">{project.members?.slice(0, 3).map((member, index) => <Avatar key={member._id ?? member.uid ?? `${project._id}-${index}`} name={member.name ?? member.displayName ?? member.email ?? ''} className="h-7 w-7 border-2 border-[#28292b] text-[10px]" />)}</span>
+              <span className="ml-auto flex -space-x-2">{project.members?.slice(0, 3).map((member, index) => <Avatar key={member._id ?? member.uid ?? `${project._id}-${index}`} name={member.name ?? member.displayName ?? member.email ?? (member._id || member.uid || member.userId ? `Member ${String(member._id ?? member.uid ?? member.userId).slice(-4)}` : 'Member')} className="h-7 w-7 border-2 border-[#28292b] text-[10px]" />)}</span>
             </Link>) : <div className="px-4 py-6 text-sm text-slate-400">No projects yet. Create one to get started.</div>}
           </section>
         </div>

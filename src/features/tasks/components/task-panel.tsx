@@ -16,6 +16,22 @@ import { tasksApi } from '../api/tasks.api'
 import { useAppDispatch } from '../../../app/hooks'
 import { setTaskProjectIds } from '../store/tasks.slice'
 import Avatar from '../../../components/ui/avatar'
+import { useAuth } from '../../auth/hooks/use-auth'
+
+const relativeCreatedTime = (value?: string) => {
+  if (!value) return 'just now'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'just now'
+  const elapsed = Math.max(0, Date.now() - date.getTime())
+  const minute = 60_000
+  const hour = 60 * minute
+  const day = 24 * hour
+  const units: [Intl.RelativeTimeFormatUnit, number][] = [
+    ['year', 365 * day], ['month', 30 * day], ['week', 7 * day], ['day', day], ['hour', hour], ['minute', minute],
+  ]
+  const [unit, duration] = units.find(([, duration]) => elapsed >= duration) ?? ['second', 1000]
+  return new Intl.RelativeTimeFormat(undefined, { numeric: 'always' }).format(-Math.floor(elapsed / duration), unit)
+}
 
 const Row = ({ label, children }) => (
   <div className="grid grid-cols-[168px_minmax(0,1fr)] items-center gap-4 py-2">
@@ -29,6 +45,7 @@ export default function TaskPanel({ taskId, projectId, role, onClose }) {
   const task = useTask(taskId)
   const { editTask, removeTask, addFiles, removeFile } = useTasks(projectId)
   const { members, meId } = useProjectMembers(projectId)
+  const { user } = useAuth()
   const { activeWorkspace } = useWorkspace()
   const { projects } = useProjects({ autoFetch: true })
 
@@ -121,6 +138,13 @@ export default function TaskPanel({ taskId, projectId, role, onClose }) {
   }
 
   const done = task.status === 'done'
+  const creator = task.createdBy ?? task.creator ?? task.createdById ?? (task as any).created_by ?? (task as any).creatorId
+  const creatorId = typeof creator === 'string' ? creator : creator?._id ?? creator?.uid ?? creator?.userId ?? creator?.email
+  const creatorMember = members.find((member) => [member._id, member.uid, member.userId, member.email].some((id) => id && String(id).toLowerCase() === String(creatorId ?? '').toLowerCase()))
+  const creatorName = typeof creator === 'object' && creator
+    ? creator.name ?? creator.displayName ?? creator.email ?? creatorMember?.name ?? creatorMember?.email
+    : creatorMember?.name ?? creatorMember?.email ?? ([user?.uid, user?.email].includes(creatorId) ? user?.displayName ?? user?.email : undefined)
+  const createdAt = task.createdAt ?? task.created_at
   const visibleProjects = projects.filter((project) => (project.name ?? '').toLowerCase().includes(projectQuery.trim().toLowerCase()))
   const toggleProjectLink = async (project) => {
     if (projectLinkBusy) return
@@ -240,6 +264,11 @@ export default function TaskPanel({ taskId, projectId, role, onClose }) {
             onUpload={(files) => addFiles(task._id, files)}
             onRemove={(attachmentId) => removeFile(task._id, attachmentId)}
           />
+        </div>
+
+        <div className="mt-7 flex items-center gap-3 border-t border-white/10 pt-5 text-sm text-slate-400">
+          <Avatar name={creatorName ?? 'Unknown member'} className="h-9 w-9 bg-amber-300 text-sm text-slate-900 ring-0" />
+          <p><span className="font-semibold text-slate-200">{creatorName ?? 'Unknown member'}</span> created this task <span className="text-slate-500">· {relativeCreatedTime(createdAt)}</span></p>
         </div>
 
         <TaskComments taskId={task._id} projectId={projectId} role={role} />

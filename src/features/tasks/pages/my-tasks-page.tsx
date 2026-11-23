@@ -78,6 +78,7 @@ function MyTasksPage({ workspaceId }) {
   const [composerLane, setComposerLane] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [openedTask, setOpenedTask] = useState<any>(null)
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
 
   const [customLanes, setCustomLanes] = usePersisted(`my-tasks:lanes:${workspaceId}`, [])
@@ -280,6 +281,7 @@ function MyTasksPage({ workspaceId }) {
       ) : view === 'Board' ? (
         <MyTasksBoard
           columns={columns}
+          selectedTaskId={selectedTaskId}
           projects={projectEntities}
           showProjects={showProjects}
           showDueDates={showDueDates}
@@ -291,7 +293,7 @@ function MyTasksPage({ workspaceId }) {
           editableProjects={editableProjects}
           defaultProjectId={defaultProjectId}
           onCreate={createInLane}
-          onOpen={setOpenedTask}
+          onOpen={(task) => { setSelectedTaskId(task._id); setOpenedTask(task) }}
           onToggle={toggle}
           onMove={moveTask}
           onAdd={(column) => setComposerLane(column.id)}
@@ -323,7 +325,7 @@ function MyTasksPage({ workspaceId }) {
                       const project = projectEntities[task.projectId]
                       const collaborator = projects.find((item) => item._id === task.projectId)?.members?.find((member) => member._id === task.assigneeId)
                       return (
-                        <div key={task._id} onClick={() => setOpenedTask(task)} className="grid min-h-[54px] cursor-pointer grid-cols-[minmax(320px,1fr)_180px_190px_220px_160px] items-center border-b border-white/10 hover:bg-white/[0.04]">
+                        <div key={task._id} onClick={() => { setSelectedTaskId(task._id); setOpenedTask(task) }} aria-selected={selectedTaskId === task._id} className={`grid min-h-[54px] cursor-pointer grid-cols-[minmax(320px,1fr)_180px_190px_220px_160px] items-center border-b border-white/10 ${selectedTaskId === task._id ? 'bg-blue-500/10 ring-1 ring-inset ring-blue-400/50' : 'hover:bg-white/[0.04]'}`}>
                           <span className="flex min-w-0 items-center gap-3 pl-9 pr-4"><TaskCheck done={task.status === 'done'} disabled={false} onToggle={() => toggle(task)} /><span className={`truncate text-sm ${task.status === 'done' ? 'text-slate-500 line-through' : 'text-slate-100'}`}>{task.title}</span></span>
                           <span className={`text-sm ${isOverdue(task) ? 'text-red-400' : 'text-slate-400'}`}>{formatDate(task.dueDate)}</span>
                           <span className="flex items-center gap-2 text-sm text-slate-300">{collaborator && <Avatar name={collaborator.name ?? collaborator.email ?? ''} className="h-7 w-7 text-[10px]" />}{collaborator?.name ?? ''}</span>

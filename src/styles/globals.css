@@ -23,6 +23,12 @@
   }
 }
 
+@media (max-width: 639px) {
+  .project-detail-scale {
+    zoom: 1;
+  }
+}
+
 
 .asana-scroll {
   scrollbar-width: thin;

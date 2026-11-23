@@ -9,14 +9,29 @@ import Avatar from '../../../components/ui/avatar'
 import { useWorkspace } from '../../workspace/hooks/use-workspace'
 import { useAuth } from '../../auth/hooks/use-auth'
 
-const statuses = ['Active', 'Closed', 'Archived']
+const statuses = [
+  { value: 'active', label: 'Active' },
+  { value: 'on_hold', label: 'On hold' },
+  { value: 'completed', label: 'Completed' },
+]
+
+function asPerson(value, fallback = null) {
+  if (typeof value === 'string') {
+    const email = value.includes('@') ? value : ''
+    return { id: value, name: email || fallback || 'Unknown user', email }
+  }
+  if (!value || typeof value !== 'object') return fallback ? asPerson(fallback) : null
+  const id = value._id ?? value.uid ?? value.userId ?? value.email
+  if (!id) return fallback ? asPerson(fallback) : null
+  return {
+    id: String(id),
+    name: value.name ?? value.displayName ?? value.email ?? fallback ?? (String(id).includes('@') ? String(id) : `Member ${String(id).slice(-4)}`),
+    email: value.email ?? (typeof fallback === 'string' && fallback.includes('@') ? fallback : ''),
+  }
+}
 
 function getOwner(project) {
-  const owner = project.owner ?? project.createdBy
-  if (!owner || typeof owner !== 'object') return null
-  const id = owner._id ?? owner.uid ?? owner.userId ?? owner.email
-  if (!id) return null
-  return { id: String(id), name: owner.name ?? owner.displayName ?? owner.email ?? 'Unknown owner', email: owner.email ?? '' }
+  return asPerson(project.owner ?? project.createdBy)
 }
 
 export default function Projects() {
@@ -30,29 +45,27 @@ export default function Projects() {
   const [selectedOwner, setSelectedOwner] = useState(null)
   const [selectedMembers, setSelectedMembers] = useState([])
   const [selectedStatus, setSelectedStatus] = useState(null)
+  const [modifiedDirection, setModifiedDirection] = useState('desc')
 
   const owners = useMemo(() => {
-    const workspaceOwner = activeWorkspace?.owner
     const ownerId = typeof activeWorkspace?.ownerId === 'string'
       ? activeWorkspace.ownerId
       : activeWorkspace?.ownerId?._id ?? activeWorkspace?.ownerId?.uid ?? activeWorkspace?.ownerId?.userId
-    const isCurrentUserOwner = ownerId && [user?.uid, user?.email].includes(ownerId)
-    const owner = workspaceOwner ?? (typeof activeWorkspace?.ownerId === 'object' ? activeWorkspace.ownerId : null)
+    const workspaceOwner = asPerson(activeWorkspace?.owner) ?? asPerson(
+      activeWorkspace?.ownerId,
+      activeWorkspace?.ownerEmail,
+    )
+    if (!workspaceOwner && !ownerId && !activeWorkspace?.ownerEmail) return []
 
-    if (owner) {
-      const id = owner._id ?? owner.uid ?? owner.userId ?? owner.email
-      if (id) return [{ id: String(id), name: owner.name ?? owner.displayName ?? owner.email ?? 'Workspace owner', email: owner.email ?? '' }]
-    }
-
-    if (isCurrentUserOwner && user) {
-      return [{ id: user.uid, name: user.displayName ?? user.email ?? 'Workspace owner', email: user.email ?? '' }]
-    }
-
-    if (activeWorkspace?.ownerEmail) {
-      return [{ id: ownerId ?? activeWorkspace.ownerEmail, name: activeWorkspace.ownerName ?? activeWorkspace.ownerEmail, email: activeWorkspace.ownerEmail }]
-    }
-
-    return []
+    const id = String(workspaceOwner?.id ?? ownerId ?? activeWorkspace.ownerEmail)
+    const isCurrentUser = user && [user.uid, user.email].includes(id)
+    return [{
+      id,
+      name: workspaceOwner?.name === id
+        ? activeWorkspace?.ownerName ?? (isCurrentUser ? user.displayName ?? user.email : 'Workspace owner')
+        : workspaceOwner?.name ?? activeWorkspace?.ownerName ?? 'Workspace owner',
+      email: workspaceOwner?.email || activeWorkspace?.ownerEmail || (isCurrentUser ? user.email ?? '' : ''),
+    }]
   }, [activeWorkspace, user])
 
   const matchingOwners = useMemo(() => {
@@ -63,19 +76,18 @@ export default function Projects() {
   const members = useMemo(() => {
     const uniqueMembers = new Map()
     projects.forEach((project) => {
-      project.members?.forEach((member) => {
-        const id = member._id ?? member.uid ?? member.userId ?? member.email
-        if (id) {
-          uniqueMembers.set(String(id), {
-            id: String(id),
-            name: member.name ?? member.displayName ?? member.email ?? 'Unknown member',
-            email: member.email ?? '',
-          })
-        }
+      const projectPeople = [...(project.members ?? []), getOwner(project)].filter(Boolean)
+      projectPeople.forEach((member) => {
+        const person = asPerson(member)
+        if (person) uniqueMembers.set(person.id, { ...uniqueMembers.get(person.id), ...person })
       })
     })
+    if (user) {
+      const currentUser = asPerson(user)
+      if (currentUser) uniqueMembers.set(currentUser.id, { ...uniqueMembers.get(currentUser.id), ...currentUser })
+    }
     return [...uniqueMembers.values()]
-  }, [projects])
+  }, [projects, user])
 
   const matchingMembers = useMemo(() => {
     const q = memberQuery.trim().toLowerCase()
@@ -86,19 +98,21 @@ export default function Projects() {
     const q = query.trim().toLowerCase()
     return projects.filter((project) => {
       const matchesQuery = !q || (project.name ?? '').toLowerCase().includes(q)
-      const projectOwner = getOwner(project)
-      const matchesOwner = !selectedOwner || projectOwner?.id === selectedOwner.id || Boolean(projectOwner?.email && projectOwner.email.toLowerCase() === selectedOwner.email.toLowerCase())
-      const projectMemberIds = (project.members ?? []).map((member) => String(member._id ?? member.uid ?? member.userId ?? member.email ?? ''))
+      const matchesOwner = !selectedOwner
+        || (typeof activeWorkspace?.ownerId === 'string' ? activeWorkspace.ownerId : activeWorkspace?.ownerId?._id ?? activeWorkspace?.ownerId?.uid ?? activeWorkspace?.ownerId?.userId) === selectedOwner.id
+        || activeWorkspace?.owner?.email?.toLowerCase() === selectedOwner.email?.toLowerCase()
+      const projectPeople = [...(project.members ?? []), getOwner(project)].filter(Boolean)
+      const projectMemberIds = projectPeople.map((member) => asPerson(member)?.id).filter(Boolean)
       const matchesMembers = selectedMembers.length === 0 || selectedMembers.every((member) => projectMemberIds.includes(member.id))
       const status = (project.status ?? '').toLowerCase().replaceAll('_', ' ')
-      const matchesStatus = !selectedStatus || (selectedStatus === 'Active'
-        ? status === 'active'
-        : selectedStatus === 'Closed'
-          ? status === 'closed' || status === 'completed'
-          : status === 'archived')
+      const matchesStatus = !selectedStatus || status === selectedStatus.replaceAll('_', ' ')
       return matchesQuery && matchesOwner && matchesMembers && matchesStatus
+    }).sort((a, b) => {
+      const aDate = new Date(a.updatedAt ?? a.updated_at ?? a.createdAt ?? a.created_at ?? 0).getTime()
+      const bDate = new Date(b.updatedAt ?? b.updated_at ?? b.createdAt ?? b.created_at ?? 0).getTime()
+      return modifiedDirection === 'desc' ? bDate - aDate : aDate - bDate
     })
-  }, [projects, query, selectedOwner, selectedMembers, selectedStatus])
+  }, [activeWorkspace, projects, query, selectedOwner, selectedMembers, selectedStatus, modifiedDirection])
 
   return (
     <section className="-mx-4 -mt-4 min-h-full md:-mx-5 md:-mt-5">
@@ -112,7 +126,7 @@ export default function Projects() {
         </button>
       </header>
 
-      <div className="px-5 pt-2">
+      <div className="px-3 pt-2 sm:px-5">
         <label className="relative flex h-11 items-center">
           <Search className="pointer-events-none absolute left-4 h-4 w-4 text-slate-400" />
           <input
@@ -169,8 +183,8 @@ export default function Projects() {
                       className="flex min-h-14 w-full items-center gap-3 px-1 text-left hover:bg-white/5"
                     >
                       <Avatar name={owner.name} className="ml-1 h-7 w-7" />
-                      <span className="min-w-16 text-sm text-slate-200">{owner.name}</span>
-                      <span className="truncate text-sm text-slate-400">{owner.email}</span>
+                      <span className="min-w-16 text-sm text-slate-200">{owner.email || owner.name}</span>
+                      {owner.email && <span className="truncate text-sm text-slate-400">{owner.name}</span>}
                     </button>
                   ))}
                   {matchingOwners.length === 0 && (
@@ -251,21 +265,21 @@ export default function Projects() {
                 onClick={toggle}
                 className={`inline-flex h-7 items-center gap-2 rounded-full border px-4 text-sm font-medium transition hover:bg-white/5 ${selectedStatus ? 'border-white/30 text-white' : 'border-white/15 text-slate-100'}`}
               >
-                {selectedStatus ?? 'Status'}<ChevronDown className="h-3 w-3 text-slate-400" />
+                {statuses.find((status) => status.value === selectedStatus)?.label ?? 'Status'}<ChevronDown className="h-3 w-3 text-slate-400" />
               </button>
             )}
           >
             {({ close }) => (
               <div className="py-2">
-                {statuses.map((status) => (
+                {statuses.map(({ value, label }) => (
                   <button
-                    key={status}
+                    key={value}
                     type="button"
-                    aria-pressed={selectedStatus === status}
-                    onClick={() => { setSelectedStatus((current) => current === status ? null : status); close() }}
+                    aria-pressed={selectedStatus === value}
+                    onClick={() => { setSelectedStatus((current) => current === value ? null : value); close() }}
                     className="flex h-[46px] w-full items-center px-6 text-left text-lg text-slate-200 transition hover:bg-white/5"
                   >
-                    {status}
+                    {label}
                   </button>
                 ))}
               </div>
@@ -274,10 +288,10 @@ export default function Projects() {
         </div>
       </div>
 
-      <div className="grid grid-cols-[minmax(0,1fr)_160px_minmax(100px,1fr)_auto] items-center gap-4 border-b border-white/10 px-5 py-2 text-sm text-slate-400 max-sm:grid-cols-[minmax(0,1fr)_100px_auto]">
+      <div className="grid grid-cols-[minmax(0,1fr)_160px_minmax(100px,1fr)_auto] items-center gap-4 border-b border-white/10 px-3 py-2 text-sm text-slate-400 max-sm:grid-cols-[minmax(0,1fr)_100px_auto] sm:px-5">
         <span>Name</span>
         <span className="max-sm:hidden">Members</span>
-        <span className="flex items-center justify-end gap-1 font-medium"><ArrowDownUp className="h-4 w-4" /> Last modified</span>
+        <button type="button" onClick={() => setModifiedDirection((direction) => direction === 'desc' ? 'asc' : 'desc')} aria-label={`Sort by last modified ${modifiedDirection === 'desc' ? 'oldest first' : 'newest first'}`} className="flex items-center justify-end gap-1 font-medium hover:text-white"><ArrowDownUp className="h-4 w-4" /> Last modified</button>
         <span aria-hidden="true" />
       </div>
 
