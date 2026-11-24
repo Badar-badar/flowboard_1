@@ -8,12 +8,20 @@ import { PATHS } from '../app/paths'
 
 export default function WorkspaceGate() {
   const dispatch = useAppDispatch()
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const { loaded, loading, workspaces, error } = useWorkspace()
 
   useEffect(() => {
-    if (user && !loaded) dispatch(fetchWorkspaces())
-  }, [user, loaded, dispatch])
+    if (!authLoading && user && !loaded && !loading && !error) dispatch(fetchWorkspaces())
+  }, [authLoading, user, loaded, loading, error, dispatch])
+
+  if (authLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#1e1f21] text-slate-400">
+        Loading...
+      </div>
+    )
+  }
 
   if (error && !loading) {
     return (

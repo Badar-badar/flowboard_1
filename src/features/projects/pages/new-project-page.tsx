@@ -67,7 +67,7 @@ export default function NewProject() {
   }
 
   return (
-    <div className="min-h-full bg-[#1e1f21] p-6 text-slate-200">
+    <div className="min-h-full bg-[#1e1f21] text-slate-200">
       <div className="mx-auto max-w-6xl">
       <Link to={PATHS.projects} className="mb-6 inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white">
         <ArrowLeft aria-hidden="true" className="h-4 w-4" /> Projects

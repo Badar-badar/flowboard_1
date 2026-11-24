@@ -28,9 +28,13 @@ axiosInstance.interceptors.response.use(
   (error: unknown) => {
     if (axios.isAxiosError(error)) {
       const body: unknown = error.response?.data
-      const serverMessage = body && typeof body === 'object' && 'message' in body && typeof body.message === 'string'
-        ? body.message
-        : undefined
+      const serverMessage = body && typeof body === 'object'
+        ? 'message' in body && typeof body.message === 'string'
+          ? body.message
+          : 'error' in body && typeof body.error === 'string'
+            ? body.error
+            : undefined
+        : typeof body === 'string' ? body : undefined
       return Promise.reject({ code: error.code, message: serverMessage ?? error.message ?? 'Something went wrong', status: error.response?.status })
     }
     return Promise.reject({ code: 'UNKNOWN', message: 'Something went wrong' })

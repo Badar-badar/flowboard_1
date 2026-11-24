@@ -19,6 +19,10 @@ export const initAuth = createAsyncThunk<IAuth.User | null>('auth/init', async (
   authReadyPromise ??= auth.authStateReady()
   await authReadyPromise
   return toPlainUser(auth.currentUser)
+}, {
+  // Multiple components call useAuth(), and Strict Mode mounts effects twice.
+  // Share the initialization request so route guards cannot race each other.
+  condition: (_, { getState }) => !(getState() as { auth: { initStarted: boolean } }).auth.initStarted,
 })
 export const toPlainUser = (u: User | null): IAuth.User | null =>
   u ? { uid: u.uid, email: u.email, displayName: u.displayName } : null

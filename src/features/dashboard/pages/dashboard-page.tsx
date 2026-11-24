@@ -74,7 +74,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-full bg-[#1e1f21] px-3 py-5 text-slate-200 sm:px-5 md:px-8 md:py-8 xl:px-9">
+    <div className="min-h-full bg-[#1e1f21] text-slate-200">
       <div className="mx-auto max-w-[1440px]">
         <p className="mb-3 text-[16px] font-semibold leading-6 text-slate-200">{formatToday()}</p>
         <div className="mb-7 flex flex-wrap items-center justify-between gap-x-6 gap-y-4 lg:flex-nowrap">

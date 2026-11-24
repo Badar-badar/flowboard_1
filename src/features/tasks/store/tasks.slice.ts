@@ -112,7 +112,12 @@ const tasksSlice = createSlice({
       .addCase(deleteAttachment.rejected, (s, { payload }) => { s.error = payload })
 
       // tasks belong to a workspace
-      .addCase(setActiveWorkspace, () => initialState)
+      .addCase(setActiveWorkspace, (_s, { payload }) => ({
+        ...initialState,
+        // Switching to no workspace is a resolved empty state, not a request
+        // that can remain in the loading state forever.
+        myLoaded: payload === null,
+      }))
       .addCase(logoutUser.fulfilled, () => initialState)
   },
 })

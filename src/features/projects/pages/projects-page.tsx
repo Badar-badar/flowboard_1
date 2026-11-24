@@ -115,8 +115,8 @@ export default function Projects() {
   }, [projects, query, selectedOwner, selectedMembers, selectedStatus, modifiedDirection])
 
   return (
-    <section className="-mx-4 -mt-4 min-h-full md:-mx-5 md:-mt-5">
-      <header className="flex min-h-20 items-center justify-between border-y border-white/10 px-3 py-3 md:px-5">
+    <section className="min-h-full">
+      <header className="flex min-h-13 items-center justify-between border-b border-white/10 px-0 py-3">
         <h1 className="text-2xl font-semibold tracking-tight text-white">Projects</h1>
         <button
           onClick={() => navigate(PATHS.newProject)}
@@ -126,7 +126,7 @@ export default function Projects() {
         </button>
       </header>
 
-      <div className="px-3 pt-2 sm:px-5">
+      <div className="pt-2">
         <label className="relative flex h-11 items-center">
           <Search className="pointer-events-none absolute left-4 h-4 w-4 text-slate-400" />
           <input
@@ -288,7 +288,7 @@ export default function Projects() {
         </div>
       </div>
 
-      <div className="grid grid-cols-[minmax(0,1fr)_160px_minmax(100px,1fr)_auto] items-center gap-4 border-b border-white/10 px-3 py-2 text-sm text-slate-400 max-sm:grid-cols-[minmax(0,1fr)_100px_auto] sm:px-5">
+      <div className="grid grid-cols-[minmax(0,1fr)_160px_minmax(100px,1fr)_auto] items-center gap-4 border-b border-white/10 py-2 text-sm text-slate-400 max-sm:grid-cols-[minmax(0,1fr)_100px_auto]">
         <span>Name</span>
         <span className="max-sm:hidden">Members</span>
         <button type="button" onClick={() => setModifiedDirection((direction) => direction === 'desc' ? 'asc' : 'desc')} aria-label={`Sort by last modified ${modifiedDirection === 'desc' ? 'oldest first' : 'newest first'}`} className="flex items-center justify-end gap-1 font-medium hover:text-white"><ArrowDownUp className="h-4 w-4" /> Last modified</button>

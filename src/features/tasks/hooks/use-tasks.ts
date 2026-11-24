@@ -55,9 +55,13 @@ export function useMyTasks() {
     if (activeId) dispatch(fetchMyTasks())
   }, [dispatch, activeId])
 
+  // No active workspace means there is nothing to fetch. Treat it as an
+  // already-loaded empty result so the page can show its empty state.
+  const hasLoaded = loaded || !activeId
+
   return {
     tasks,
-    loaded,
+    loaded: hasLoaded,
     toggleDone: (task: ITasks.Task) =>
       dispatch(updateTask({ id: task._id, changes: { status: task.status === 'done' ? 'todo' : 'done' } })).unwrap(),
   }

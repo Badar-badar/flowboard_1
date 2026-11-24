@@ -45,8 +45,8 @@ export default function ProjectHeader({ project, view, onViewChange }: { project
   }
 
   return (
-    <div className="-mx-4 -mt-4 border-b border-white/10 md:-mx-5 md:-mt-5">
-      <div className="flex min-h-[54px] items-center gap-2.5 px-5 py-2 md:px-6">
+    <div className="border-b border-white/10">
+      <div className="flex min-h-[54px] items-center gap-2.5 px-0 py-2">
         <ProjectIcon color={project.color} size="h-8 w-8" />
         <h1 className="ml-2 max-w-[42vw] truncate text-2xl font-semibold tracking-tight text-white">{project.name}</h1>
         <ProjectMenu project={project} onEdit={() => setEditing(true)} />
@@ -94,7 +94,7 @@ export default function ProjectHeader({ project, view, onViewChange }: { project
         </div>
       </div>
 
-      <div className="flex items-center gap-1 overflow-x-auto px-5 py-2 md:px-6">
+      <div className="flex items-center gap-1 overflow-x-auto px-0 py-2">
         {tabs.map((tab) => {
           const active = tab.key === view
           return (

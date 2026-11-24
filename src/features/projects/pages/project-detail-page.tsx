@@ -49,7 +49,7 @@ export default function ProjectDetail() {
         {view === 'overview' ? (
           <ProjectOverview project={project} />
         ) : (
-          <div className="px-2">
+          <div>
             <View projectId={project._id} role={project.role} onOpen={openTask} />
           </div>
         )}

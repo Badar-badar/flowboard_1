@@ -70,7 +70,7 @@ export default function ProjectOverview({ project }: { project: IProjects.Projec
 
   return (
     <div className="grid min-h-[calc(100dvh-12rem)] grid-cols-1 bg-[#1e1f21] lg:h-[calc(100dvh-10rem)] lg:min-h-[32rem] lg:grid-cols-[minmax(0,1.5fr)_minmax(360px,1fr)]">
-      <main className="asana-scroll min-h-0 overflow-y-auto px-6 py-10 lg:px-10">
+      <main className="asana-scroll min-h-0 overflow-y-auto px-0 py-6">
         <section>
           <div className="flex max-w-3xl items-center justify-between gap-4">
             <h2 className="text-2xl font-semibold text-slate-100">Project description</h2>
@@ -115,7 +115,7 @@ export default function ProjectOverview({ project }: { project: IProjects.Projec
         </section>
       </main>
 
-      <aside className="asana-scroll min-h-0 overflow-y-auto border-t border-white/10 bg-[#252628] px-6 py-10 lg:border-l lg:border-t-0 lg:px-9">
+      <aside className="asana-scroll min-h-0 overflow-y-auto border-t border-white/10 bg-[#252628] px-0 py-6 lg:border-l lg:border-t-0">
         <h2 className="text-2xl font-semibold text-slate-400">Activity</h2>
         <ol className="mt-7">
           <ActivityEntry title={`${activeWorkspace?.name ?? 'Workspace'} team joined`} time={formattedTime(joinedAt)} person={activeWorkspace?.owner ?? owner ?? user} />

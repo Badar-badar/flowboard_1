@@ -22,7 +22,7 @@ export default function AppLayout() {
           open={panelOpen}
           onWorkClick={() => setPanelOpen((isOpen) => !isOpen)}
         /></div>
-        <main className="min-w-0 flex-1 overflow-y-auto p-4 pb-20 md:p-5">
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-4 pb-20 md:p-6 md:pb-6">
           <Outlet />
         </main>
       </div>

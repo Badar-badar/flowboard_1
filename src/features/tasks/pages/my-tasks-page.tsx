@@ -16,17 +16,22 @@ import { projectsSelectors } from '../../projects/store/projects.slice'
 import { addDaysToDateInput, formatDate, getTaskDueSection, isOverdue, TASK_DUE_SECTIONS, toDateInput } from '../task-constants'
 import { canEditTasks } from '../task-permissions'
 import { membersApi } from '../../members/api/members.api'
+import type { ITasks } from '../types/tasks.types'
+import type { ComponentType, Dispatch, ReactNode, SetStateAction } from 'react'
+
+interface LaneDefinition { id: string; label: string; custom?: boolean; defaultDue?: string }
+interface TaskColumn extends LaneDefinition { tasks: ITasks.Task[]; taskCount?: number }
 
 const VIEWS = ['List', 'Board', 'Calendar', 'Dashboard', 'Knowledge']
 const todayStr = () => toDateInput(new Date())
 const BASE_LANES = TASK_DUE_SECTIONS
 
 // due date a card gets in a lane (null = clear it, undefined = leave it alone)
-const dueForLane = (id, today) =>
-  ({ recent: null, today, week: addDaysToDateInput(today, 3), later: addDaysToDateInput(today, 14), overdue: addDaysToDateInput(today, -1) })[id]
+const dueForLane = (id: string, today: string): string | null | undefined =>
+  ({ recent: null, today, week: addDaysToDateInput(today, 3), later: addDaysToDateInput(today, 14), overdue: addDaysToDateInput(today, -1) } as Record<string, string | null>)[id]
 
-function usePersisted(key, initial) {
-  const [value, setValue] = useState(() => {
+function usePersisted<T>(key: string, initial: T): [T, Dispatch<SetStateAction<T>>] {
+  const [value, setValue] = useState<T>(() => {
     try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : initial } catch { return initial }
   })
   useEffect(() => {
@@ -37,7 +42,7 @@ function usePersisted(key, initial) {
 
 const menuBtn = 'inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white'
 
-function ToolbarMenu({ label, Icon, width = 'w-48', children }) {
+function ToolbarMenu({ label, Icon, width = 'w-48', children }: { label: string; Icon: ComponentType<{ className?: string }>; width?: string; children: ReactNode }) {
   return (
     <Dropdown width={width} align="right" trigger={({ open, toggle }) => (
       <button type="button" aria-expanded={open} onClick={toggle} className={menuBtn}>
@@ -49,7 +54,7 @@ function ToolbarMenu({ label, Icon, width = 'w-48', children }) {
   )
 }
 
-const Box = ({ on }) => <span className={`h-4 w-4 rounded border ${on ? 'border-blue-400 bg-blue-400' : 'border-white/30'}`} />
+const Box = ({ on }: { on: boolean }) => <span className={`h-4 w-4 rounded border ${on ? 'border-blue-400 bg-blue-400' : 'border-white/30'}`} />
 
 // remount per workspace so each workspace keeps its own sections
 export default function MyTasks() {
@@ -57,7 +62,7 @@ export default function MyTasks() {
   return <MyTasksPage key={activeId ?? 'none'} workspaceId={activeId ?? 'none'} />
 }
 
-function MyTasksPage({ workspaceId }) {
+function MyTasksPage({ workspaceId }: { workspaceId: string }) {
   const dispatch = useAppDispatch()
   const { tasks, loaded, toggleDone } = useMyTasks()
   const { user } = useAuth()
@@ -77,16 +82,16 @@ function MyTasksPage({ workspaceId }) {
   const [addingSection, setAddingSection] = useState(false)
   const [composerLane, setComposerLane] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
-  const [openedTask, setOpenedTask] = useState<any>(null)
+  const [openedTask, setOpenedTask] = useState<ITasks.Task | null>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
 
-  const [customLanes, setCustomLanes] = usePersisted(`my-tasks:lanes:${workspaceId}`, [])
-  const [deletedLanes, setDeletedLanes] = usePersisted(`my-tasks:deleted-lanes:${workspaceId}`, [])
-  const [laneNames, setLaneNames] = usePersisted(`my-tasks:lane-names:${workspaceId}`, {})
+  const [customLanes, setCustomLanes] = usePersisted<LaneDefinition[]>(`my-tasks:lanes:${workspaceId}`, [])
+  const [deletedLanes, setDeletedLanes] = usePersisted<string[]>(`my-tasks:deleted-lanes:${workspaceId}`, [])
+  const [laneNames, setLaneNames] = usePersisted<Record<string, string>>(`my-tasks:lane-names:${workspaceId}`, {})
   const [hideEmptyColumns, setHideEmptyColumns] = usePersisted(`my-tasks:hide-empty:${workspaceId}`, false)
-  const [overrides, setOverrides] = usePersisted(`my-tasks:overrides:${workspaceId}`, {})
-  const [lastProject, setLastProject] = usePersisted(`my-tasks:project:${workspaceId}`, '')
+  const [overrides, setOverrides] = usePersisted<Record<string, string>>(`my-tasks:overrides:${workspaceId}`, {})
+  const [lastProject, setLastProject] = usePersisted<string>(`my-tasks:project:${workspaceId}`, '')
 
   const today = todayStr()
 
@@ -104,12 +109,12 @@ function MyTasksPage({ workspaceId }) {
         : (toDateInput(a.dueDate) || '9999').localeCompare(toDateInput(b.dueDate) || '9999'))
   }, [tasks, query, filter, hideCompleted, sortMode, projectEntities])
 
-  const lanes = useMemo(
+  const lanes = useMemo<LaneDefinition[]>(
     () => [...BASE_LANES.map((l) => ({ ...l, label: laneNames[l.id] ?? l.label, custom: false })), ...customLanes.map((l) => ({ ...l, custom: true }))],
     [customLanes, laneNames],
   )
 
-  const laneOf = useCallback((task) => {
+  const laneOf = useCallback((task: ITasks.Task): string => {
     const o = overrides[task._id]
     if (o && customLanes.some((l) => l.id === o)) return o
     return getTaskDueSection(task, today)
@@ -128,7 +133,7 @@ function MyTasksPage({ workspaceId }) {
     [lanes, tasks, filteredTasks, laneOf, today, deletedLanes],
   )
 
-  const moveTask = (task, lane) => {
+  const moveTask = (task: ITasks.Task, lane: TaskColumn) => {
     if (laneOf(task) === lane.id) return
     if (lane.custom) {
       setOverrides((cur) => ({ ...cur, [task._id]: lane.id }))
@@ -145,18 +150,18 @@ function MyTasksPage({ workspaceId }) {
     dispatch(updateTask({ id: task._id, changes: { dueDate } })).unwrap().catch(() => {})
   }
 
-  const addLane = (label) => {
+  const addLane = (label: string) => {
     setHideEmptyColumns(false)
     setCustomLanes((cur) => [...cur, { id: `custom-${Date.now()}`, label }])
   }
-  const removeLane = (lane) => {
-    if (lane.taskCount > 0) return
+  const removeLane = (lane: TaskColumn) => {
+    if ((lane.taskCount ?? lane.tasks.length) > 0) return
     if (lane.custom) setCustomLanes((cur) => cur.filter((item) => item.id !== lane.id))
     else setDeletedLanes((current) => current.includes(lane.id) ? current : [...current, lane.id])
   }
 
   // create inside a column, assigned to me
-  const createInLane = async (lane, title, projectId, due) => {
+  const createInLane = async (lane: TaskColumn, title: string, projectId: string, due: string) => {
     setLastProject(projectId)
 
     // the full members list, so "me" is found even when the project has more than 3 members
@@ -182,12 +187,12 @@ function MyTasksPage({ workspaceId }) {
     } catch { setCopied(false) }
   }
 
-  const toggle = (task) => toggleDone(task).catch(() => {})
+  const toggle = (task: ITasks.Task) => toggleDone(task).catch(() => {})
 
   return (
-    <div className="-m-4 flex h-[calc(100dvh-3.5rem)] flex-col overflow-hidden md:-m-5">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <header className="shrink-0 border-b border-white/10">
-        <div className="flex h-14 items-center gap-2 px-6">
+        <div className="flex h-14 items-center gap-2 px-0">
           <Avatar name={user?.displayName ?? user?.email ?? ''} size="h-8 w-8" className="text-xs ring-0" />
           <h1 className="ml-1 text-xl font-semibold text-white">My tasks</h1>
           <Dropdown width="w-60" trigger={({ open, toggle: t }) => (
@@ -214,7 +219,7 @@ function MyTasksPage({ workspaceId }) {
           </div>
         </div>
 
-        <nav aria-label="My tasks views" className="flex h-11 items-center gap-1 overflow-x-auto px-6">
+        <nav aria-label="My tasks views" className="flex h-11 items-center gap-1 overflow-x-auto px-0">
           {VIEWS.map((v) => (
             <button key={v} type="button" onClick={() => setView(v)} className={`inline-flex h-8 shrink-0 items-center rounded-md px-3 text-sm font-semibold transition-colors ${view === v ? 'bg-blue-950 text-blue-400' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>{v}</button>
           ))}
@@ -226,7 +231,7 @@ function MyTasksPage({ workspaceId }) {
         </nav>
       </header>
 
-      <div className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-white/10 px-6">
+      <div className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-white/10 px-0">
         <div className="inline-flex h-8 items-stretch rounded-md bg-blue-500 text-sm font-medium text-white">
           <button type="button" onClick={() => openComposer('recent')} className="inline-flex items-center gap-1.5 rounded-l-md px-3 hover:bg-blue-400">
             <Plus className="h-4 w-4" />Add task
@@ -271,13 +276,13 @@ function MyTasksPage({ workspaceId }) {
       </div>
 
       {taskError && (
-        <div className="mx-6 mt-3 flex shrink-0 items-center justify-between rounded-lg bg-rose-500/10 px-3 py-2 text-sm text-rose-300">
+        <div className="mx-0 mt-3 flex shrink-0 items-center justify-between rounded-lg bg-rose-500/10 px-3 py-2 text-sm text-rose-300">
           {taskError}<button type="button" onClick={() => dispatch(clearTasksError())} className="underline">Dismiss</button>
         </div>
       )}
 
       {!loaded ? (
-        <p className="px-6 py-8 text-sm text-slate-400">Loading tasks...</p>
+        <p className="px-0 py-8 text-sm text-slate-400">Loading tasks...</p>
       ) : view === 'Board' ? (
         <MyTasksBoard
           columns={columns}
@@ -306,7 +311,7 @@ function MyTasksPage({ workspaceId }) {
           onToggleHideEmpty={() => setHideEmptyColumns((value) => !value)}
         />
       ) : view === 'List' ? (
-        <div className="asana-scroll min-h-0 flex-1 overflow-auto px-6 py-2">
+        <div className="asana-scroll min-h-0 flex-1 overflow-auto px-0 py-2">
           <div className="min-w-[1050px]">
             <div className="grid grid-cols-[minmax(320px,1fr)_180px_190px_220px_160px] border-b border-white/10 py-2.5 text-sm text-slate-400">
               <span>Name</span><span>Due date</span><span>Collaborators</span><span>Projects</span><span>Task visibility</span>
@@ -343,7 +348,7 @@ function MyTasksPage({ workspaceId }) {
           </div>
         </div>
       ) : (
-        <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-slate-400">{view} view is coming soon.</div>
+        <div className="flex flex-1 items-center justify-center px-0 text-center text-sm text-slate-400">{view} view is coming soon.</div>
       )}
 
       {openedTask && (
