@@ -41,12 +41,16 @@ export default function NewProject() {
     if (projectName.length < 2) {
       return
     }
+    if (!workspaceId) {
+      setError('No workspace is selected. Please select a workspace and try again.')
+      return
+    }
     try {
       if (createdProject) {
         navigate(PATHS.projectDetail(createdProject._id), { replace: true })
         return
       }
-      const project = await addProject({ name: projectName, color })
+      const project = await addProject({ name: projectName, color, workspaceId })
       setCreatedProject(project)
       if (access === 'workspace' && workspaceId) {
         const workspaceMembers = (await workspaceApi.getMembers(workspaceId)).data ?? []

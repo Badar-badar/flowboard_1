@@ -22,7 +22,7 @@ export namespace IProjects {
     taskStats?: { total: number; done: number }
   }
   export interface Member { _id?: string; uid?: string; userId?: string; name?: string; displayName?: string; email?: string; photoURL?: string }
-  export interface CreatePayload { name: string; color: string }
+  export interface CreatePayload { name: string; color: string; workspaceId: string }
   export type UpdatePayload = Partial<Pick<Project, 'name' | 'color' | 'description' | 'status' | 'startDate' | 'dueDate' | 'isFavorite'>>
   export interface ListResponse { data: Project[] }
   export interface ItemResponse { data: Project }
