@@ -212,7 +212,7 @@ function InlineTaskCard({ column, projects, defaultProjectId, onCreate, onClose 
   )
 }
 
-function Column({ column, composing, composer, children, onAdd, onRemove, onRename, onAddSection, hideEmptyColumns, onToggleHideEmpty, allCollapsed, onToggleAllCollapsed }: { column: Lane; composing: boolean; composer: ReactNode; children: ReactNode; onAdd: (column: Lane) => void; onRemove: (column: Lane) => void; onRename: (column: Lane, title: string) => void; onAddSection: () => void; hideEmptyColumns: boolean; onToggleHideEmpty: () => void; allCollapsed: boolean; onToggleAllCollapsed: (collapsed: boolean) => void }) {
+function Column({ column, composing, composer, children, onAdd, onRemove, onRename, onAddSection, hideEmptyColumns, onToggleHideEmpty, allCollapsed, onToggleAllCollapsed, canAddTask = true }: { column: Lane; composing: boolean; composer: ReactNode; children: ReactNode; onAdd: (column: Lane) => void; onRemove: (column: Lane) => void; onRename: (column: Lane, title: string) => void; onAddSection: () => void; hideEmptyColumns: boolean; onToggleHideEmpty: () => void; allCollapsed: boolean; onToggleAllCollapsed: (collapsed: boolean) => void; canAddTask?: boolean }) {
   // the whole column is the drop target, so empty columns are easy to hit
   const { setNodeRef, isOver } = useDroppable({ id: column.id })
   const collapsed = allCollapsed
@@ -239,9 +239,9 @@ function Column({ column, composing, composer, children, onAdd, onRemove, onRena
           <span className="text-sm text-slate-400">{column.tasks.length}</span>
         </>}
         {!collapsed && <div className="ml-auto flex items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover/h:opacity-100">
-          <button type="button" aria-label="Add task" onClick={() => onAdd(column)} className="rounded p-1 text-slate-400 hover:bg-white/10 hover:text-white">
+          {canAddTask && <button type="button" aria-label="Add task" onClick={() => onAdd(column)} className="rounded p-1 text-slate-400 hover:bg-white/10 hover:text-white">
             <Plus className="h-4 w-4" />
-          </button>
+          </button>}
           <Dropdown width="w-64" align="right" trigger={({ toggle }) => (
             <button type="button" aria-label="Section options" onClick={toggle} className="rounded p-1 text-slate-400 hover:bg-white/10 hover:text-white"><MoreHorizontal className="h-4 w-4" /></button>
           )}>
@@ -261,13 +261,13 @@ function Column({ column, composing, composer, children, onAdd, onRemove, onRena
       {!collapsed && <div className={`asana-scroll mt-2 min-h-0 overflow-y-auto rounded-lg p-2 transition-colors ${isOver ? 'bg-[#2c2f35] ring-2 ring-blue-400/50' : 'bg-[#252628]'}`}>
         <div className="space-y-2">{children}</div>
         {composing && <div className="mt-2">{composer}</div>}
-        <button
+        {canAddTask && <button
           type="button"
           onClick={() => onAdd(column)}
           className="mt-2 flex h-9 w-full items-center gap-2 rounded-md px-2 text-sm text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-100"
         >
           <Plus className="h-4 w-4" /> Add task
-        </button>
+        </button>}
       </div>}
     </section>
   )
@@ -425,29 +425,6 @@ export function MyTasksBoard({
   )
 }
 
-function ProjectColumn({ section, tasks, project, role, onOpen, onToggle, onAdd, composing, onCreate, activeTaskId }: { section: Lane; tasks: ITasks.Task[]; project?: IProjects.Project; role?: string; onOpen: (task: ITasks.Task) => void; onToggle: (task: ITasks.Task) => void; onAdd: (sectionId: string | null) => void; composing: boolean; onCreate: (column: Lane, title: string, projectId: string, dueDate: string) => Promise<unknown>; activeTaskId: string | null }) {
-  const { setNodeRef, isOver } = useDroppable({ id: section.id })
-  const canAdd = canEditTasks(role)
-  const column = { ...section, tasks }
-
-  return (
-    <section ref={setNodeRef} className={`${COL} flex shrink-0 flex-col`}>
-      <header className="flex h-12 shrink-0 items-center gap-2 rounded-lg bg-[#252628] px-4">
-        <h2 className="truncate text-base font-semibold text-slate-100">{section.label}</h2>
-        <span className="text-sm text-slate-400">{tasks.length}</span>
-        {canAdd && <button type="button" aria-label={`Add task to ${section.label}`} onClick={() => onAdd(section.id)} className="ml-auto rounded p-1 text-slate-400 hover:bg-white/10 hover:text-white"><Plus className="h-4 w-4" /></button>}
-      </header>
-      <div className={`asana-scroll mt-2 min-h-0 flex-1 overflow-y-auto rounded-lg p-2 ${isOver ? 'bg-[#2c2f35] ring-2 ring-blue-400/50' : 'bg-[#252628]'}`}>
-        <div className="space-y-2">
-          {tasks.map((task) => <Card key={task._id} task={task} project={project} showProject={false} showDue today={toDateInput(new Date())} onOpen={onOpen} onToggle={onToggle} active={task._id === activeTaskId} />)}
-          {composing && <InlineTaskCard column={column} projects={project ? [project] : []} defaultProjectId={project?._id} onCreate={onCreate} onClose={() => onAdd(null)} />}
-          {canAdd && <button type="button" onClick={() => onAdd(section.id)} className="flex h-9 w-full items-center gap-2 rounded-md px-2 text-sm text-slate-400 hover:bg-white/5 hover:text-slate-100"><Plus className="h-4 w-4" />Add task</button>}
-        </div>
-      </div>
-    </section>
-  )
-}
-
 export default function TaskBoardView({ projectId, role, onOpen }: { projectId: string; role?: string; onOpen: (taskId: string) => void }) {
   const { tasks, loaded, error, clearError, addTask, editTask } = useTasks(projectId)
   const { projects } = useProjects()
@@ -456,6 +433,11 @@ export default function TaskBoardView({ projectId, role, onOpen }: { projectId: 
   const [composerStatus, setComposerStatus] = useState<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  const [addingSection, setAddingSection] = useState(false)
+  const [sectionName, setSectionName] = useState('')
+  const [collapseAll, setCollapseAll] = useState(false)
+  const boardRef = useRef<HTMLDivElement>(null)
+  const scrollAfterAdd = useRef(false)
   const [customLanes, setCustomLanes] = useState<Array<{ id: string; label: string }>>(() => readWorkspaceSetting(workspaceId, 'lanes', []))
   const [laneOverrides, setLaneOverrides] = useState<Record<string, string>>(() => readWorkspaceSetting(workspaceId, 'overrides', {}))
   const [laneNames, setLaneNames] = useState<Record<string, string>>(() => readWorkspaceSetting(workspaceId, 'lane-names', {}))
@@ -488,6 +470,32 @@ export default function TaskBoardView({ projectId, role, onOpen }: { projectId: 
     }
   }).filter((section) => (!deletedLanes.includes(section.id) || section.tasks.length > 0) && (!hideEmptyColumns || section.tasks.length > 0)), [sections, tasks, laneOverrides, customLanes, today, deletedLanes, hideEmptyColumns])
   const activeTask = tasks.find((task) => task._id === activeId)
+
+  useEffect(() => {
+    if (addingSection) boardRef.current?.scrollTo({ left: boardRef.current.scrollWidth, behavior: 'smooth' })
+  }, [addingSection])
+
+  useEffect(() => {
+    if (!scrollAfterAdd.current) return
+    scrollAfterAdd.current = false
+    boardRef.current?.scrollTo({ left: boardRef.current.scrollWidth, behavior: 'smooth' })
+  }, [columns.length])
+
+  const addColumn = (label: string) => {
+    setHideEmptyColumns(false)
+    setCustomLanes((current) => [...current, { id: `custom-${Date.now()}`, label }])
+  }
+
+  const removeColumn = (column: Lane) => {
+    if (column.tasks.length) return
+    if (column.custom) setCustomLanes((current) => current.filter((item) => item.id !== column.id))
+    else setDeletedLanes((current) => current.includes(column.id) ? current : [...current, column.id])
+  }
+
+  const renameColumn = (column: Lane, label: string) => {
+    if (column.custom) setCustomLanes((current) => current.map((item) => item.id === column.id ? { ...item, label } : item))
+    else setLaneNames((current) => ({ ...current, [column.id]: label }))
+  }
 
   const createInColumn = async (column: Lane, title: string, _projectId: string, dueDate: string) => {
     const task = await addTask({ title, status: 'todo', dueDate: dueDate || undefined })
@@ -525,14 +533,51 @@ export default function TaskBoardView({ projectId, role, onOpen }: { projectId: 
     editTask(task._id, { dueDate }).catch(() => {})
   }
 
+  const submitSection = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const label = sectionName.trim()
+    if (!label) return
+    addColumn(label)
+    setSectionName('')
+    setAddingSection(false)
+    setCollapseAll(false)
+    scrollAfterAdd.current = true
+  }
+
   if (!loaded) return <p className="py-10 text-sm text-slate-400">Loading tasks...</p>
 
   return (
-    <div className="project-board-height flex h-[calc(100dvh-14rem)] min-h-[20rem] flex-col">
+    <div className="project-board-height flex h-full min-h-0 flex-col">
       {error && <div className="mb-2 flex items-center justify-between rounded-lg bg-rose-500/10 px-3 py-2 text-sm text-rose-300">{error}<button type="button" onClick={clearError} className="underline">Dismiss</button></div>}
       <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={({ active }) => setActiveId(String(active.id))} onDragEnd={moveTask} onDragCancel={() => setActiveId(null)}>
-        <div className="asana-scroll flex min-h-0 flex-1 items-stretch gap-4 overflow-x-auto overflow-y-hidden pb-3 pt-2">
-          {columns.map((column) => <ProjectColumn key={column.id} section={column} tasks={column.tasks} project={project} role={role} onOpen={(task) => { setSelectedTaskId(task._id); onOpen(task._id) }} onToggle={toggleTask} onAdd={setComposerStatus} composing={composerStatus === column.id} onCreate={createInColumn} activeTaskId={selectedTaskId} />)}
+        <div ref={boardRef} className="asana-scroll flex min-h-0 flex-1 items-stretch gap-4 overflow-x-auto overflow-y-hidden px-6 pb-4 pt-4 [--scroll-bg:#1e1f21]">
+          {columns.map((column) => <Column
+            key={column.id}
+            column={column}
+            onAdd={(next) => setComposerStatus(next.id)}
+            onRemove={removeColumn}
+            onRename={renameColumn}
+            onAddSection={() => setAddingSection(true)}
+            hideEmptyColumns={hideEmptyColumns}
+            onToggleHideEmpty={() => setHideEmptyColumns((value) => !value)}
+            allCollapsed={collapseAll}
+            onToggleAllCollapsed={setCollapseAll}
+            canAddTask={canEditTasks(role)}
+            composing={composerStatus === column.id}
+            composer={<InlineTaskCard column={column} projects={project ? [project] : []} defaultProjectId={project?._id} onCreate={createInColumn} onClose={() => setComposerStatus(null)} />}
+          >
+            {column.tasks.map((task) => <Card key={task._id} task={task} project={project} showProject={false} showDue today={today} onOpen={(item) => { setSelectedTaskId(item._id); onOpen(item._id) }} onToggle={toggleTask} active={selectedTaskId === task._id} />)}
+          </Column>)}
+          <div className={`${COL} shrink-0`}>
+            {addingSection ? (
+              <form onSubmit={submitSection} className="rounded-lg bg-[#252628] p-2">
+                <input autoFocus value={sectionName} maxLength={40} onChange={(event) => setSectionName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); if (event.key === 'Escape') { setAddingSection(false); setSectionName('') } }} onBlur={() => { if (!sectionName.trim()) setAddingSection(false) }} placeholder="Section name" className="h-9 w-full rounded-md border border-white/20 bg-[#2a2b2d] px-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-white/50" />
+              </form>
+            ) : (
+              <button type="button" onClick={() => setAddingSection(true)} className="flex h-12 w-full items-center gap-2 rounded-lg px-4 text-sm font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-100"><Plus className="h-4 w-4" /> Add section</button>
+            )}
+          </div>
+          <div className="w-2 shrink-0" />
         </div>
         <DragOverlay>{activeTask && <div className="w-[288px] rounded-lg border border-white/25 bg-[#303133] p-3 shadow-2xl"><CardContent task={activeTask} project={project} showProject={false} showDue today={toDateInput(new Date())} onToggle={() => {}} /></div>}</DragOverlay>
       </DndContext>

@@ -22,8 +22,26 @@
     width: 100%;
   }
 
+  .project-detail-scale.project-detail-board {
+    display: flex;
+    height: calc(117.647dvh - 7.132rem);
+    flex-direction: column;
+  }
+
+  .project-detail-board-content {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+  }
+
   .project-detail-scale .project-board-height {
-    height: calc(117.647dvh - 16.471rem);
+    min-height: 0;
+    flex: 1;
+  }
+
+  .project-detail-board-content > .project-board-height {
+    height: 100%;
   }
 }
 
@@ -32,8 +50,8 @@
     zoom: 1;
   }
 
-  .project-detail-scale .project-board-height {
-    height: calc(100dvh - 14rem);
+  .project-detail-scale.project-detail-board {
+    height: calc(100dvh - 9.0625rem);
   }
 }
 

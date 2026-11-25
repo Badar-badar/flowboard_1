@@ -44,12 +44,12 @@ export default function ProjectDetail() {
 
   return (
     <div>
-      <div className="project-detail-scale">
+      <div className={`project-detail-scale ${view === 'board' ? 'project-detail-board' : ''}`}>
         <ProjectHeader project={project} view={view} onViewChange={setView} />
         {view === 'overview' ? (
           <ProjectOverview project={project} />
         ) : (
-          <div>
+          <div className={view === 'board' ? 'project-detail-board-content' : undefined}>
             <View projectId={project._id} role={project.role} onOpen={openTask} />
           </div>
         )}
