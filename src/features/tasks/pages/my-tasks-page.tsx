@@ -223,11 +223,11 @@ function MyTasksPage({ workspaceId }: { workspaceId: string }) {
           {VIEWS.map((v) => (
             <button key={v} type="button" onClick={() => setView(v)} className={`inline-flex h-8 shrink-0 items-center rounded-md px-3 text-sm font-semibold transition-colors ${view === v ? 'bg-blue-950 text-blue-400' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>{v}</button>
           ))}
-          <Dropdown width="w-44" trigger={({ toggle: t }) => (
+          {/* <Dropdown width="w-44" trigger={({ toggle: t }) => (
             <button type="button" title="Add view" onClick={t} className="ml-1 rounded-md p-1.5 text-slate-400 hover:bg-white/10 hover:text-white"><Plus className="h-5 w-5" /></button>
           )}>
             <div className="px-3 py-2 text-sm text-slate-400">Saved views coming soon</div>
-          </Dropdown>
+          </Dropdown> */}
         </nav>
       </header>
 
