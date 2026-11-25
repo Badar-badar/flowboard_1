@@ -92,9 +92,9 @@ export default function Home() {
 
         <div className="grid items-stretch gap-5 lg:grid-cols-2 lg:gap-5">
           <section className="flex min-h-[560px] flex-col overflow-hidden rounded-xl border border-white/10 bg-[#292a2c] shadow-sm">
-            <div className="flex items-center justify-between gap-3 px-3 pt-">
+            <div className="flex items-center justify-between gap-3 px-6 pt-6">
               <div className="flex min-w-0 items-center gap-3.5">
-                <Avatar name={user?.displayName ?? user?.email ?? ''} size="h-5 w-5" className="text-xs ring-0" />
+                <Avatar name={user?.displayName ?? user?.email ?? ''} size="h-9 w-9" className="text-xs ring-0" />
                 <h2 className="text-xl font-semibold leading-8 text-slate-100 sm:text-[24px]">My tasks</h2>
                 <LockKeyhole className="h-4 w-4 text-slate-400" aria-label="Private tasks" />
               </div>
@@ -120,8 +120,8 @@ export default function Home() {
             </div>
           </section>
 
-          <section className="min-h-[560px] rounded-xl border border-white/10 bg-[#292a2c] px-3 py- shadow-sm">
-            <div className="mb-3 flex items-center justify-between gap-3">
+          <section className="min-h-[560px] rounded-xl border border-white/10 bg-[#292a2c] px-6 py-6 shadow-sm">
+            <div className="mb-5 flex items-center justify-between gap-3">
               <div className="flex items-center gap-5"><h2 className="text-[24px] font-semibold leading-8 text-slate-100">Projects</h2><Dropdown width="w-40" trigger={({ open, toggle }) => <button type="button" aria-expanded={open} onClick={toggle} className="inline-flex items-center gap-1 text-[15px] font-medium text-slate-400 hover:text-white">{projectSort === 'name' ? 'Name' : projectSort === 'updated' ? 'Recently updated' : 'Recents'} <ChevronDown className="h-4 w-4" /></button>}>
                 {({ close }) => <div className="py-1">{[['recent', 'Recently created'], ['updated', 'Recently updated'], ['name', 'Name']].map(([value, label]) => <button key={value} type="button" onClick={() => { setProjectSort(value); close() }} className={`w-full px-3 py-2 text-left text-sm hover:bg-white/5 ${projectSort === value ? 'text-blue-300' : 'text-slate-200'}`}>{label}</button>)}</div>}
               </Dropdown></div>
