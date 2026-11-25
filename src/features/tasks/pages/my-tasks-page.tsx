@@ -231,13 +231,13 @@ function MyTasksPage({ workspaceId }: { workspaceId: string }) {
         </nav>
       </header>
 
-      <div className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-white/10 px-0">
-        <div className="inline-flex h-8 items-stretch rounded-md bg-blue-500 text-sm font-medium text-white">
-          <button type="button" onClick={() => openComposer('recent')} className="inline-flex items-center gap-1.5 rounded-l-md px-3 hover:bg-blue-400">
-            <Plus className="h-4 w-4" />Add task
+      <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-white/10 px-0">
+        <div className="inline-flex h-10 shrink-0 items-stretch rounded-md bg-blue-500 text-sm font-medium text-white sm:h-8 sm:rounded-md">
+          <button type="button" onClick={() => openComposer('recent')} className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-l-md px-2.5 hover:bg-blue-400 sm:px-3">
+            <Plus className="h-4 w-4 shrink-0" /><span>Add task</span>
           </button>
           <Dropdown width="w-44" trigger={({ toggle: t }) => (
-            <button type="button" aria-label="More add options" onClick={t} className="flex h-full items-center rounded-r-md border-l border-white/30 px-1.5 hover:bg-blue-400"><ChevronDown className="h-4 w-4" /></button>
+            <button type="button" aria-label="More add options" onClick={t} className="flex h-full shrink-0 items-center rounded-r-md border-l border-white/30 px-1.5 hover:bg-blue-400"><ChevronDown className="h-4 w-4" /></button>
           )}>
             {({ close }) => (
               <div className="py-1 text-slate-200">

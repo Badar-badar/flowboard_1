@@ -36,8 +36,7 @@ export default function AppLayout() {
       {mobileMenuOpen && <div className="fixed inset-0 z-50 md:hidden">
         <button type="button" aria-label="Close menu" onClick={() => setMobileMenuOpen(false)} className="absolute inset-0 bg-black/60" />
         <div className="relative h-full w-[min(280px,85vw)] shadow-2xl">
-          <button type="button" aria-label="Close menu" onClick={() => setMobileMenuOpen(false)} className="absolute right-2 top-2 z-10 rounded-md bg-[#303133] px-2 py-1 text-sm text-white">Close</button>
-          <Sidebar open onWorkClick={() => setMobileMenuOpen(false)} />
+          <Sidebar mobile open onClose={() => setMobileMenuOpen(false)} onWorkClick={() => setMobileMenuOpen(false)} />
         </div>
       </div>}
     </div>

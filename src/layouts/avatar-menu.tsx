@@ -47,8 +47,8 @@ export default function AvatarMenu() {
             <div className="w-[260px] border-r border-white/10 p-3">
               <h3 className="px-2 pb-2 pt-1 text-lg font-semibold text-white">Account</h3>
               <ul className="max-h-72 space-y-0.5 overflow-y-auto">
-                {workspaces.map((w) => (
-                  <li key={w._id}>
+                {workspaces.map((w, index) => (
+                  <li key={w._id || `workspace-${index}`}>
                     <button
                       onClick={() => { switchTo(w._id); setOpen(false) }}
                       className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-white/5"
@@ -62,7 +62,7 @@ export default function AvatarMenu() {
                   </li>
                 ))}
                 {!workspaces.length && (
-                  <li className="px-2 py-2 text-sm text-slate-400">No workspaces yet</li>
+                  <li key="empty-workspaces" className="px-2 py-2 text-sm text-slate-400">No workspaces yet</li>
                 )}
               </ul>
             </div>

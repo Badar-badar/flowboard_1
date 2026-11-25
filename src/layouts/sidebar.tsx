@@ -4,12 +4,13 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { PATHS } from '../app/paths'
 import AvatarMenu from './avatar-menu'
 import ProjectIcon from '../features/projects/components/project-icon'
+import { projectsSelectors } from '../features/projects/store/projects.slice'
 import type { LucideIcon } from 'lucide-react'
 
 import {
   LayoutGrid, Bot, Triangle, Map, User, Ellipsis,
   Home, CircleCheck, ClipboardList,
-  ChevronDown, Plus, CircleHelp, UserPlus,
+  ChevronDown, Plus, CircleHelp, UserPlus, X,
 } from 'lucide-react'
 
 const railItems: { label: string; icon: LucideIcon; active?: boolean }[] = [
@@ -84,14 +85,17 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
       : 'text-slate-200 hover:bg-white/5'
   }`
 
-function Panel() {
+function Panel({ mobile = false, onClose }: { mobile?: boolean; onClose?: () => void }) {
   const [workOpen, setWorkOpen] = useState(true)
-  const projects = useAppSelector((state) => Object.values(state.projects.entities))
+  const projects = useAppSelector(projectsSelectors.selectAll)
   const navigate = useNavigate()
 
   return (
     <div className="flex h-full w-[190px] flex-col">
-      <h2 className="px-3 pb-3 pt-2.5 text-sm font-small text-slate-400">Work</h2>
+      <div className="flex h-12 shrink-0 items-center justify-between px-3">
+        <h2 className="text-sm font-small text-slate-400">Work</h2>
+        {mobile && <button type="button" aria-label="Close menu" onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/10 hover:text-white"><X className="h-5 w-5" /></button>}
+      </div>
 
       <nav className="space-y-0.5 px-2">
         <NavLink to={PATHS.home} end className={linkClass}>
@@ -159,7 +163,7 @@ function Panel() {
 }
 
 /* ---------- Export ---------- */
-export default function Sidebar({ open, onWorkClick }: { open: boolean; onWorkClick: () => void }) {
+export default function Sidebar({ open, onWorkClick, mobile = false, onClose }: { open: boolean; onWorkClick: () => void; mobile?: boolean; onClose?: () => void }) {
   return (
     <aside className="flex h-full shrink-0 bg-[#1e1f21] text-slate-200">
       <Rail panelOpen={open} onWorkClick={onWorkClick} />
@@ -170,7 +174,7 @@ export default function Sidebar({ open, onWorkClick }: { open: boolean; onWorkCl
         }`}
       >
         <div className="h-full rounded-tl-2xl border-l border-t border-white/10 bg-[#252628]">
-          <Panel />
+          <Panel mobile={mobile} onClose={onClose} />
         </div>
       </div>
     </aside>
