@@ -25,8 +25,9 @@ export default function WorkspaceGate() {
 
   if (error && !loading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 text-slate-300">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[#1e1f21] px-4 text-center text-slate-300">
         <p>We couldn't load your workspaces. Please try again.</p>
+        <p role="alert" className="max-w-lg text-sm text-slate-400">{error}</p>
         <button type="button" onClick={() => dispatch(fetchWorkspaces())} className="rounded-md bg-white/10 px-4 py-2 hover:bg-white/15">Retry</button>
       </div>
     )
