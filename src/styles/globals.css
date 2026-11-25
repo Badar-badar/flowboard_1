@@ -21,11 +21,19 @@
     zoom: 0.85;
     width: 100%;
   }
+
+  .project-detail-scale .project-board-height {
+    height: calc(117.647dvh - 16.471rem);
+  }
 }
 
 @media (max-width: 639px) {
   .project-detail-scale {
     zoom: 1;
+  }
+
+  .project-detail-scale .project-board-height {
+    height: calc(100dvh - 14rem);
   }
 }
 

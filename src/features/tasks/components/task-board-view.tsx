@@ -528,7 +528,7 @@ export default function TaskBoardView({ projectId, role, onOpen }: { projectId: 
   if (!loaded) return <p className="py-10 text-sm text-slate-400">Loading tasks...</p>
 
   return (
-    <div className="flex h-[calc(100dvh-14rem)] min-h-[20rem] flex-col">
+    <div className="project-board-height flex h-[calc(100dvh-14rem)] min-h-[20rem] flex-col">
       {error && <div className="mb-2 flex items-center justify-between rounded-lg bg-rose-500/10 px-3 py-2 text-sm text-rose-300">{error}<button type="button" onClick={clearError} className="underline">Dismiss</button></div>}
       <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={({ active }) => setActiveId(String(active.id))} onDragEnd={moveTask} onDragCancel={() => setActiveId(null)}>
         <div className="asana-scroll flex min-h-0 flex-1 items-stretch gap-4 overflow-x-auto overflow-y-hidden pb-3 pt-2">

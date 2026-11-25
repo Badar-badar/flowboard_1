@@ -15,6 +15,7 @@ import { useWorkspace } from '../../workspace/hooks/use-workspace'
 const tabs = [
   { key: 'overview', label: 'Overview' },
   { key: 'list', label: 'List' },
+  { key: 'board', label: 'Board' },
   { key: 'timeline', label: 'Timeline' },
   { key: 'dashboard', label: 'Dashboard' },
 ]
@@ -101,22 +102,14 @@ export default function ProjectHeader({ project, view, onViewChange }: { project
             <button
               key={tab.key}
               type="button"
-              onClick={() => tab.key === 'overview' || tab.key === 'list' ? onViewChange(tab.key) : undefined}
-              title={tab.key === 'overview' || tab.key === 'list' ? undefined : `${tab.label} view coming soon`}
+              onClick={() => ['overview', 'list', 'board'].includes(tab.key) ? onViewChange(tab.key) : undefined}
+              title={['overview', 'list', 'board'].includes(tab.key) ? undefined : `${tab.label} view coming soon`}
               className={`shrink-0 rounded-t-lg px-3 py-2 text-base font-semibold transition-colors ${active ? 'bg-blue-950 text-blue-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'}`}
             >
               {tab.label}
             </button>
           )
         })}
-        <Dropdown
-          width="w-40"
-          trigger={({ toggle }) => <button type="button" onClick={toggle} title="Add view" className="ml-1 rounded-md p-2 text-slate-400 transition hover:bg-white/10 hover:text-white"><Plus className="h-5 w-5" /></button>}
-        >
-          {({ close }) => (
-            <button type="button" onClick={() => { onViewChange('board'); close() }} className="w-full px-3 py-2.5 text-left text-sm text-slate-200 hover:bg-white/5">Board view</button>
-          )}
-        </Dropdown>
       </div>
       {editing && <EditProjectModal project={project} onClose={() => setEditing(false)} />}
       {inviting && <InviteMembersModal scope="project" projectId={project._id} projectName={project.name} workspaceId={workspaceId ?? undefined} onClose={() => setInviting(false)} />}

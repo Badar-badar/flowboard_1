@@ -40,7 +40,7 @@ export default function ProjectDetail() {
   if (state === 'error' && !project) return <p className="text-rose-400">Could not load this project.</p>
   if (!project) return <p className="text-slate-400">Loading...</p>
 
-  const View = view === 'list' ? TaskListView : TaskBoardView
+  const View = view === 'board' ? TaskBoardView : TaskListView
 
   return (
     <div>
