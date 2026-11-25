@@ -12,7 +12,11 @@ export const fetchWorkspaces = createAsyncThunk<IWorkspace.Workspace[], void, { 
   async (_, { rejectWithValue }) => {
     try {
       const res = await workspaceApi.getMine()
-      return res.data
+      const workspaces = Array.isArray(res) ? res : res?.data
+      if (!Array.isArray(workspaces)) {
+        return rejectWithValue('The server returned an invalid workspace list')
+      }
+      return workspaces
     } catch (err) {
       return rejectWithValue(messageOf(err, 'Could not load workspaces'))
     }

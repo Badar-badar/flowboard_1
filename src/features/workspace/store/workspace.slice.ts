@@ -36,9 +36,9 @@ const workspaceSlice = createSlice({
       .addCase(fetchWorkspaces.fulfilled, (s, { payload }) => {
         s.loading = false
         s.loaded = true
-        s.items = payload
-        if (!payload.some((w) => w._id === s.activeId)) {
-          s.activeId = payload[0]?._id ?? null
+        s.items = Array.isArray(payload) ? payload : []
+        if (!s.items.some((w) => w._id === s.activeId)) {
+          s.activeId = s.items[0]?._id ?? null
         }
       })
       .addCase(fetchWorkspaces.rejected, (s, { payload }) => {
