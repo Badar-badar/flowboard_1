@@ -11,6 +11,7 @@ export namespace IProjects {
     status?: string
     startDate?: string | null
     dueDate?: string | null
+    endDate?: string | null
     members?: IProjects.Member[]
     memberCount?: number
     isFavorite?: boolean

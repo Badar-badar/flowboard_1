@@ -39,7 +39,11 @@ export default function ProjectOverview({ project }: { project: IProjects.Projec
   const { members, loaded } = useProjectMembers(project._id)
   const { activeWorkspace, activeId: workspaceId } = useWorkspace()
   const { user } = useAuth()
-  const owner = project.owner ?? project.createdBy
+  const owner = project.owner
+    ?? project.createdBy
+    ?? (typeof project.ownerId === 'object'
+      ? project.ownerId
+      : project.members?.find((member) => member._id === project.ownerId))
   const ownerName = nameOf(owner ?? user)
   const createdAt = project.createdAt ?? project.created_at
   const joinedAt = activeWorkspace?.createdAt ?? activeWorkspace?.created_at ?? createdAt

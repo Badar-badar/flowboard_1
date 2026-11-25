@@ -2,6 +2,7 @@ import axios, { type AxiosRequestConfig } from 'axios'
 import { auth } from './firebase.config'
 import { store } from '../app/store'
 import environment from './environment'
+import { normalizeApiIds } from '../lib/normalize-api-ids'
 
 
 
@@ -24,7 +25,7 @@ axiosInstance.interceptors.request.use(async (config) => {
 })
 
 axiosInstance.interceptors.response.use(
-  (res) => res.data,
+  (res) => normalizeApiIds(res.data),
   (error: unknown) => {
     if (axios.isAxiosError(error)) {
       const body: unknown = error.response?.data

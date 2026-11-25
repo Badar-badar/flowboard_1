@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, Info, Link2, Plus, Search, Trash2, X } from 'lucide-react'
+import { Info, Link2, Trash2, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import TaskCheck from './task-check'
 import AssigneePicker from './assignee-picker'
@@ -12,13 +12,9 @@ import { useProjects } from '../../projects/hooks/use-projects'
 import { PATHS } from '../../../app/paths'
 import { canChangeStatus, canEditTasks } from '../task-permissions'
 import TaskComments from './task-comments'
-import { tasksApi } from '../api/tasks.api'
-import { useAppDispatch } from '../../../app/hooks'
-import { setTaskProjectIds } from '../store/tasks.slice'
 import Avatar from '../../../components/ui/avatar'
 import { useAuth } from '../../auth/hooks/use-auth'
 import type { ITasks } from '../types/tasks.types'
-import type { IProjects } from '../../projects/types/projects.types'
 import type { ReactNode } from 'react'
 
 const relativeCreatedTime = (value?: string) => {
@@ -44,7 +40,6 @@ const Row = ({ label, children }: { label: string; children: ReactNode }) => (
 )
 
 export default function TaskPanel({ taskId, projectId, role, onClose }: { taskId: string; projectId: string; role?: string; onClose: () => void }) {
-  const dispatch = useAppDispatch()
   const task = useTask(taskId)
   const { editTask, removeTask, addFiles, removeFile } = useTasks(projectId)
   const { members, meId } = useProjectMembers(projectId)
@@ -56,11 +51,6 @@ export default function TaskPanel({ taskId, projectId, role, onClose }: { taskId
   const [description, setDescription] = useState('')
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState('')
-  const [projectPickerOpen, setProjectPickerOpen] = useState(false)
-  const [projectQuery, setProjectQuery] = useState('')
-  const [linkedProjectIds, setLinkedProjectIds] = useState<string[]>([])
-  const [projectLinkBusy, setProjectLinkBusy] = useState(false)
-  const projectPickerRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLElement>(null)
 
   // reset the text fields only when another task is opened
@@ -68,11 +58,6 @@ export default function TaskPanel({ taskId, projectId, role, onClose }: { taskId
     if (task) { setTitle(task.title); setDescription(task.description ?? '') }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task?._id])
-
-  useEffect(() => {
-    if (!task) return
-    setLinkedProjectIds([...new Set([task.projectId, ...(task.projectIds ?? [])])])
-  }, [task?._id, task?.projectId, task?.projectIds])
 
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -86,22 +71,6 @@ export default function TaskPanel({ taskId, projectId, role, onClose }: { taskId
       document.removeEventListener('pointerdown', onOutsidePointer)
     }
   }, [onClose])
-
-  useEffect(() => {
-    if (!projectPickerOpen) return
-    const closePicker = (event: MouseEvent) => {
-      if (!projectPickerRef.current?.contains(event.target as Node)) setProjectPickerOpen(false)
-    }
-    const onPickerKey = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape') setProjectPickerOpen(false)
-    }
-    document.addEventListener('mousedown', closePicker)
-    document.addEventListener('keydown', onPickerKey)
-    return () => {
-      document.removeEventListener('mousedown', closePicker)
-      document.removeEventListener('keydown', onPickerKey)
-    }
-  }, [projectPickerOpen])
 
   if (!task) {
     return (
@@ -148,22 +117,7 @@ export default function TaskPanel({ taskId, projectId, role, onClose }: { taskId
     ? creator.name ?? creator.displayName ?? creator.email ?? creatorMember?.name ?? creatorMember?.email
     : creatorMember?.name ?? creatorMember?.email ?? ([user?.uid, user?.email].includes(creatorId) ? user?.displayName ?? user?.email : undefined)
   const createdAt = task.createdAt ?? task.created_at
-  const visibleProjects = projects.filter((project) => (project.name ?? '').toLowerCase().includes(projectQuery.trim().toLowerCase()))
-  const toggleProjectLink = async (project: IProjects.Project) => {
-    if (projectLinkBusy) return
-    setProjectLinkBusy(true)
-    setError('')
-    try {
-      const response = linkedProjectIds.includes(project._id)
-        ? await tasksApi.removeProject(task._id, project._id)
-        : await tasksApi.addProject(task._id, project._id)
-      const nextIds = [...new Set([response.data.projectId, ...(response.data.projectIds ?? [])])]
-      setLinkedProjectIds(nextIds)
-      dispatch(setTaskProjectIds({ id: task._id, projectIds: nextIds }))
-    } catch (requestError: unknown) {
-      setError(requestError && typeof requestError === 'object' && 'message' in requestError && typeof requestError.message === 'string' ? requestError.message : 'Could not update project links')
-    } finally { setProjectLinkBusy(false) }
-  }
+  const taskProject = projects.find((project) => project._id === task.projectId)
 
   return (
     <aside ref={panelRef} className="fixed right-0 top-0 z-50 flex h-full w-full max-w-[560px] flex-col border-l border-white/10 bg-[#1f1f1f] text-slate-200 shadow-2xl">
@@ -222,30 +176,11 @@ export default function TaskPanel({ taskId, projectId, role, onClose }: { taskId
         </div>
 
         <section className="mt-5 border-t border-white/10 pt-4">
-          <div ref={projectPickerRef} className="relative mb-2 flex items-center gap-2 px-2">
-            <h2 className="text-base font-semibold text-slate-100">Projects</h2>
-            <span className="rounded bg-white/10 px-1.5 py-0.5 text-xs text-slate-300">{linkedProjectIds.length}</span>
-            <button type="button" disabled={!fullEdit} onClick={() => { setProjectPickerOpen((open) => !open); setProjectQuery('') }} aria-expanded={projectPickerOpen} aria-label="Add task to another project" title={fullEdit ? 'Add to project' : 'Editor access is required'} className="rounded p-1 text-slate-400 hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"><Plus className="h-4 w-4" /></button>
-            {projectPickerOpen && <div className="absolute left-0 right-0 top-8 z-40 overflow-hidden rounded-lg border border-white/10 bg-[#292a2c] shadow-2xl">
-              <div className="border-b border-white/10 p-2"><label className="flex h-9 items-center gap-2 rounded-md border border-white/10 px-2.5"><Search className="h-4 w-4 text-slate-500" /><input autoFocus value={projectQuery} onChange={(event) => setProjectQuery(event.target.value)} placeholder="Project name" aria-label="Find a project" className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-500" />{projectLinkBusy && <span className="text-xs text-slate-500">Saving...</span>}</label></div>
-              <div className="asana-scroll max-h-64 overflow-y-auto p-1">
-                {visibleProjects.map((item) => {
-                  const selected = linkedProjectIds.includes(item._id)
-                  return <button key={item._id} type="button" disabled={projectLinkBusy || !fullEdit || selected && linkedProjectIds.length <= 1} onClick={() => toggleProjectLink(item)} className="flex min-h-11 w-full items-center gap-3 rounded-md px-2.5 text-left transition hover:bg-white/[0.07] disabled:cursor-not-allowed disabled:opacity-50">
-                    <span className="min-w-0 flex-1 truncate text-sm text-slate-100">{item.name}{selected && <span className="ml-2 text-xs text-slate-500">Added</span>}</span>
-                    <span className="flex items-center -space-x-2">{item.members?.slice(0, 2).map((member, index) => <Avatar key={member._id ?? member.uid ?? `${item._id}-${index}`} name={member.name ?? member.email ?? ''} className="h-7 w-7" />)}{(item.memberCount ?? 0) > 2 && <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#3a3b3d] text-[10px] text-slate-300">+{(item.memberCount ?? 0) - 2}</span>}</span>
-                    {selected && <Check className="h-4 w-4 text-blue-300" />}
-                  </button>
-                })}
-                {!visibleProjects.length && <p className="px-3 py-5 text-center text-sm text-slate-500">No projects found</p>}
-              </div>
-            </div>}
-          </div>
-          <div className="space-y-1">{linkedProjectIds.map((id) => {
-            const linkedProject = projects.find((item) => item._id === id)
-            if (!linkedProject) return null
-            return <Link key={id} to={PATHS.projectDetail(id)} className="flex h-9 items-center gap-2 rounded-md px-2 text-sm text-slate-300 hover:bg-white/5 hover:text-white"><span className="h-3.5 w-3.5 rounded-sm" style={{ backgroundColor: linkedProject.color || '#8d84e8' }} />{linkedProject.name}</Link>
-          })}</div>
+          <h2 className="mb-2 px-2 text-base font-semibold text-slate-100">Project</h2>
+          <Link to={PATHS.projectDetail(projectId)} className="flex h-9 items-center gap-2 rounded-md px-2 text-sm text-slate-300 hover:bg-white/5 hover:text-white">
+            <span className="h-3.5 w-3.5 rounded-sm" style={{ backgroundColor: taskProject?.color || '#8d84e8' }} />
+            {taskProject?.name ?? 'Open project'}
+          </Link>
         </section>
 
         <h3 className="mb-2 mt-5 text-sm font-medium text-slate-300">Description</h3>

@@ -7,7 +7,7 @@ export namespace IAuth {
   }
   export interface Credentials { email: string; password: string }
   export interface SignupPayload extends Credentials { name: string }
-  export interface BackendUser extends Partial<User> { firebaseUid?: string; name?: string }
-  export interface SyncUserPayload { name: string }
-  export interface MeResponse { user?: BackendUser; data?: BackendUser | { user?: BackendUser } }
+  export interface BackendUser extends Partial<User> { id?: string; firebaseUid?: string; name?: string }
+  export interface SyncUserPayload { name?: string }
+  export interface MeResponse { success?: boolean; user?: BackendUser }
 }

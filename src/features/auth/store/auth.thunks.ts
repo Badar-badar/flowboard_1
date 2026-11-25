@@ -30,13 +30,9 @@ export const toPlainUser = (u: User | null): IAuth.User | null =>
 const syncAndFetchUser = async (firebaseUser: User, profile: { displayName?: string } = {}): Promise<IAuth.User> => {
   const displayName = profile.displayName ?? firebaseUser.displayName ?? ''
 
-  await authApi.syncUser({ name: displayName })
+  await authApi.syncUser(displayName ? { name: displayName } : {})
   const response = await authApi.getMe()
-  const responseData = response.data
-  let backendUser: IAuth.BackendUser | undefined = response.user
-  if (!backendUser && responseData) {
-    backendUser = 'user' in responseData ? responseData.user : responseData
-  }
+  const backendUser = response.user
 
   if (backendUser && typeof backendUser === 'object') {
     return {

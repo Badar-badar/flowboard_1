@@ -56,6 +56,7 @@ export default function NewWorkspaceModal({ onClose }) {
         <input
           autoFocus
           value={name}
+          maxLength={120}
           onChange={(e) => { setName(e.target.value); setError('') }}
           placeholder="Company or team name"
           className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-slate-400 outline-none focus:border-white/40"

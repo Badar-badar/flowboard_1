@@ -10,6 +10,4 @@ export const tasksApi = {
   remove: (id: string) => axiosClient.delete(`/task/${id}`),
   addAttachments: (id: string, formData: FormData) => axiosClient.post<ITasks.ItemResponse>(`/task/${id}/attachments`, formData),
   removeAttachment: (id: string, attachmentId: string) => axiosClient.delete<ITasks.ItemResponse>(`/task/${id}/attachments/${attachmentId}`),
-  addProject: (id: string, projectId: string) => axiosClient.post<ITasks.ItemResponse>(`/task/${id}/projects`, { projectId }),
-  removeProject: (id: string, projectId: string) => axiosClient.delete<ITasks.ItemResponse>(`/task/${id}/projects/${projectId}`),
 }

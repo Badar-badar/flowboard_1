@@ -1,6 +1,7 @@
 export const TASK_STATUSES = [
   { value: 'todo', label: 'To do', dot: 'bg-slate-400' },
   { value: 'in_progress', label: 'In progress', dot: 'bg-blue-400' },
+  { value: 'in_review', label: 'In review', dot: 'bg-violet-400' },
   { value: 'done', label: 'Done', dot: 'bg-emerald-400' },
 ]
 
@@ -33,7 +34,6 @@ export const TASK_PRIORITIES = [
   { value: 'low', label: 'Low', className: 'bg-slate-500/20 text-slate-300' },
   { value: 'medium', label: 'Medium', className: 'bg-blue-500/20 text-blue-300' },
   { value: 'high', label: 'High', className: 'bg-amber-500/20 text-amber-300' },
-  { value: 'urgent', label: 'Urgent', className: 'bg-rose-500/20 text-rose-300' },
 ]
 
 export const priorityMeta = (value?: string) =>
