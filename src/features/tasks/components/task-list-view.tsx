@@ -6,7 +6,7 @@ import AddTaskRow from './add-task-row'
 import { useTasks } from '../hooks/use-tasks'
 import { useProjectMembers } from '../../members/hooks/use-project-members'
 import { useWorkspace } from '../../workspace/hooks/use-workspace'
-import { getTaskDueSection, TASK_DUE_SECTIONS, TASK_STATUSES, toDateInput } from '../task-constants'
+import { addDaysToDateInput, getTaskDueSection, TASK_DUE_SECTIONS, TASK_STATUSES, toDateInput } from '../task-constants'
 import { canEditTasks } from '../task-permissions'
 import type { ITasks } from '../types/tasks.types'
 import type { ComponentType, ReactNode } from 'react'
@@ -148,6 +148,21 @@ export default function TaskListView({ projectId, role, onOpen }: { projectId: s
     setAddingLane(false)
   }
 
+  const addDueGroupTask = async (group: DueSection, title: string, dueDate?: string) => {
+    const defaultDueDate: Record<string, string | undefined> = {
+      today,
+      week: addDaysToDateInput(today, 3),
+      later: addDaysToDateInput(today, 14),
+      overdue: addDaysToDateInput(today, -1),
+    }
+    const task = await addTask({ title, status: 'todo', dueDate: dueDate || defaultDueDate[group.id] })
+    if (group.custom) {
+      const next = { ...laneOverrides, [task._id]: group.id }
+      setLaneOverrides(next)
+      saveLaneSetting('overrides', next)
+    }
+  }
+
   const onEdit = (id: string, changes: ITasks.UpdatePayload) => editTask(id, changes).catch(() => {})
   const onDelete = async (task: ITasks.Task) => {
     if (!window.confirm(`Delete “${task.title}”? This cannot be undone.`)) return
@@ -275,7 +290,7 @@ export default function TaskListView({ projectId, role, onOpen }: { projectId: s
           </div>
           {!collapsed[group.id] && <>
             {group.items.map((task) => <TaskRow key={task._id} task={task} role={role} meId={meId} members={members} active={activeTaskId === task._id} onOpen={(id) => { setActiveTaskId(id); onOpen(id) }} onEdit={onEdit} onDelete={onDelete} />)}
-            {canAdd && <AddTaskRow onAdd={(title, dueDate) => addTask({ title, status: 'todo', dueDate })} />}
+            {canAdd && <AddTaskRow onAdd={(title, dueDate) => addDueGroupTask(group, title, dueDate)} />}
           </>}
         </section>
       )) : (
