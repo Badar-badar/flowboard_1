@@ -20,6 +20,7 @@ interface TasksState {
   myLoaded: boolean
   myRequestId: string | null
   pendingCreates: Record<string, string>
+  idAliases: Record<string, string>
   backups: Record<string, Partial<ITasks.Task>>
   error: string | null
 }
@@ -31,6 +32,7 @@ const initialState = adapter.getInitialState<TasksState>({
   myLoaded: false,
   myRequestId: null,
   pendingCreates: {},
+  idAliases: {},
   backups: {},         // requestId -> previous values, for optimistic rollback
   error: null,
 })
@@ -43,6 +45,9 @@ const tasksSlice = createSlice({
     removeTaskFromStore(s, { payload }: { payload: string }) {
       adapter.removeOne(s, payload)
       s.myIds = s.myIds.filter((id) => id !== payload)
+      Object.entries(s.idAliases).forEach(([temporaryId, taskId]) => {
+        if (temporaryId === payload || taskId === payload) delete s.idAliases[temporaryId]
+      })
       s.error = null
     },
     includeCreatedTaskInMyTasks(s, { payload }: { payload: ITasks.Task }) {
@@ -107,7 +112,10 @@ const tasksSlice = createSlice({
       })
       .addCase(createTask.fulfilled, (s, { payload, meta }) => {
         const temporaryId = s.pendingCreates[meta.requestId]
-        if (temporaryId) adapter.removeOne(s, temporaryId)
+        if (temporaryId) {
+          adapter.removeOne(s, temporaryId)
+          s.idAliases[temporaryId] = payload._id
+        }
         delete s.pendingCreates[meta.requestId]
         adapter.upsertOne(s, payload)
       })
@@ -141,6 +149,9 @@ const tasksSlice = createSlice({
       .addCase(deleteTask.fulfilled, (s, { payload }) => {
         adapter.removeOne(s, payload)
         s.myIds = s.myIds.filter((id) => id !== payload)
+        Object.entries(s.idAliases).forEach(([temporaryId, taskId]) => {
+          if (temporaryId === payload || taskId === payload) delete s.idAliases[temporaryId]
+        })
       })
       .addCase(deleteTask.rejected, (s, { payload }) => { s.error = payload })
 

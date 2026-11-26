@@ -37,7 +37,11 @@ export function useTasks(projectId?: string) {
 // one task for the side panel; fetches it if it isn't in the store yet (opened from a link)
 export function useTask(id?: string) {
   const dispatch = useAppDispatch()
-  const task = useAppSelector((s) => id ? tasksSelectors.selectById(s, id) : undefined)
+  const task = useAppSelector((s) => {
+    if (!id) return undefined
+    const resolvedId = s.tasks.idAliases[id] ?? id
+    return tasksSelectors.selectById(s, resolvedId)
+  })
   const requestedId = useRef<string | null>(null)
 
   useEffect(() => {

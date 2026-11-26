@@ -15,7 +15,7 @@ import TaskComments from './task-comments'
 import Avatar from '../../../components/ui/avatar'
 import { useAuth } from '../../auth/hooks/use-auth'
 import { useAppDispatch } from '../../../app/hooks'
-import { removeTaskFromStore } from '../store/tasks.slice'
+import { clearTasksError, removeTaskFromStore } from '../store/tasks.slice'
 import type { ITasks } from '../types/tasks.types'
 import type { ReactNode } from 'react'
 
@@ -56,6 +56,7 @@ export default function TaskPanel({ taskId, projectId, role, onClose }: { taskId
   const [error, setError] = useState('')
   const [deleting, setDeleting] = useState(false)
   const panelRef = useRef<HTMLElement>(null)
+  const pendingSaves = useRef(new Set<Promise<void>>())
 
   // reset the text fields only when another task is opened
   useEffect(() => {
@@ -84,9 +85,19 @@ export default function TaskPanel({ taskId, projectId, role, onClose }: { taskId
     )
   }
 
+  const taskPending = task._id.startsWith('pending-')
   const fullEdit = canEditTasks(role)
-  const statusOk = canChangeStatus(role, task, meId)
-  const save = (changes: ITasks.UpdatePayload) => editTask(task._id, changes).catch((e: unknown) => setError(typeof e === 'string' ? e : 'Could not save'))
+  const taskEditable = fullEdit && !deleting && !taskPending
+  const statusOk = canChangeStatus(role, task, meId) && !deleting && !taskPending
+  const save = (changes: ITasks.UpdatePayload) => {
+    if (deleting || taskPending) return Promise.resolve()
+    const pending = editTask(task._id, changes)
+      .then(() => undefined)
+      .catch((e: unknown) => setError(typeof e === 'string' ? e : 'Could not save'))
+    pendingSaves.current.add(pending)
+    void pending.finally(() => pendingSaves.current.delete(pending))
+    return pending
+  }
 
   const saveTitle = () => {
     const v = title.trim()
@@ -99,11 +110,13 @@ export default function TaskPanel({ taskId, projectId, role, onClose }: { taskId
   }
 
   const onDelete = async () => {
-    if (deleting || !window.confirm(`Delete "${task.title}"? This cannot be undone.`)) return
+    if (deleting || taskPending || !window.confirm(`Delete "${task.title}"? This cannot be undone.`)) return
     setDeleting(true)
     setError('')
     try {
+      await Promise.all([...pendingSaves.current])
       await removeTask(task._id)
+      dispatch(clearTasksError())
       onClose()
     } catch (e) {
       const message = typeof e === 'string'
@@ -152,7 +165,7 @@ export default function TaskPanel({ taskId, projectId, role, onClose }: { taskId
             <Link2 className="h-5 w-5" />
           </button>
           {fullEdit && (
-            <button onClick={onDelete} disabled={deleting} title={deleting ? 'Deleting task' : 'Delete task'} className="rounded p-2 text-slate-400 hover:bg-white/10 hover:text-rose-400 disabled:cursor-wait disabled:opacity-50">
+            <button onClick={onDelete} disabled={deleting || taskPending} title={taskPending ? 'Task is still being created' : deleting ? 'Deleting task' : 'Delete task'} className="rounded p-2 text-slate-400 hover:bg-white/10 hover:text-rose-400 disabled:cursor-wait disabled:opacity-50">
               <Trash2 className="h-5 w-5" />
             </button>
           )}
@@ -166,7 +179,7 @@ export default function TaskPanel({ taskId, projectId, role, onClose }: { taskId
       <div className="flex-1 overflow-y-auto px-5 py-7">
         <input
           value={title}
-          disabled={!fullEdit}
+          disabled={!taskEditable}
           maxLength={120}
           onChange={(e) => setTitle(e.target.value)}
           onBlur={saveTitle}
@@ -177,9 +190,9 @@ export default function TaskPanel({ taskId, projectId, role, onClose }: { taskId
         <div className="mb-4 space-y-1">
           <Row label="Assignee">
             <div className="flex min-w-0 items-center gap-3">
-              <AssigneePicker members={members} assigneeId={task.assigneeId} canEdit={fullEdit} onChange={(id) => save({ assigneeId: id })} />
+            <AssigneePicker members={members} assigneeId={task.assigneeId} canEdit={taskEditable} onChange={(id) => save({ assigneeId: id })} />
               {task.assigneeId && fullEdit && (
-                <button onClick={() => save({ assigneeId: null })} title="Unassign" className="rounded p-1 text-slate-400 hover:text-white">
+                <button disabled={!taskEditable} onClick={() => save({ assigneeId: null })} title="Unassign" className="rounded p-1 text-slate-400 hover:text-white disabled:opacity-50">
                   <X className="h-4 w-4" />
                 </button>
               )}
@@ -187,9 +200,9 @@ export default function TaskPanel({ taskId, projectId, role, onClose }: { taskId
           </Row>
           <Row label="Due date">
             <div className="flex items-center gap-2">
-              <DueDatePicker task={task} canEdit={fullEdit} onChange={(d) => save({ dueDate: d })} />
+              <DueDatePicker task={task} canEdit={taskEditable} onChange={(d) => save({ dueDate: d })} />
               {task.dueDate && fullEdit && (
-                <button onClick={() => save({ dueDate: null })} title="Clear due date" className="rounded p-1 text-slate-400 hover:text-white">
+                <button disabled={!taskEditable} onClick={() => save({ dueDate: null })} title="Clear due date" className="rounded p-1 text-slate-400 hover:text-white disabled:opacity-50">
                   <X className="h-4 w-4" />
                 </button>
               )}
@@ -208,7 +221,7 @@ export default function TaskPanel({ taskId, projectId, role, onClose }: { taskId
         <h3 className="mb-2 mt-5 text-sm font-medium text-slate-300">Description</h3>
         <textarea
           value={description}
-          disabled={!fullEdit}
+          disabled={!taskEditable}
           rows={5}
           maxLength={1000}
           placeholder={fullEdit ? 'What is this task about?' : 'No description'}
