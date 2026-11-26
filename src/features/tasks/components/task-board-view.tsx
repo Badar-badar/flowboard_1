@@ -92,7 +92,7 @@ function Card({ task, project, showProject, showDue, today, onOpen, onToggle, ac
       ref={setNodeRef}
       {...attributes}
       {...listeners}
-      onClick={() => onOpen(task)}
+      onClick={() => { if (!isDragging) onOpen(task) }}
       aria-selected={active}
       className={`group relative cursor-pointer rounded-lg border p-3 outline-none transition-colors ${active ? 'border-blue-400/70 bg-[#30343a] ring-1 ring-blue-400/40' : 'border-white/10 bg-[#2a2b2d] hover:border-white/25 hover:bg-[#303133]'} focus-visible:border-blue-400 ${isDragging ? 'opacity-40' : ''}`}
     >
@@ -369,7 +369,8 @@ export function MyTasksBoard({
     setActiveId(null)
     if (!over) return
     const task = allTasks.find((t) => t._id === active.id)
-    const column = columns.find((c) => c.id === over.id)
+    const overId = String(over.id)
+    const column = columns.find((c) => c.id === overId) ?? columns.find((c) => c.tasks.some((item) => item._id === overId))
     if (task && column) onMove(task, column)
   }
 
@@ -665,7 +666,8 @@ export default function TaskBoardView({ projectId, role, onOpen }: { projectId: 
     setActiveId(null)
     if (!over) return
     const task = tasks.find((item) => item._id === String(active.id))
-    const section = columns.find((item) => item.id === String(over.id))
+    const overId = String(over.id)
+    const section = columns.find((item) => item.id === overId) ?? columns.find((item) => item.tasks.some((item) => item._id === overId))
     if (!task || !section || sectionForTask(task) === section.id) return
     const next = { ...laneOverrides, [task._id]: section.id }
     setLaneOverrides(next)

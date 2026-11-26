@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useAppDispatch, useAppSelector } from '../../../app/hooks'
 import {
   fetchProjectTasks, fetchMyTasks, fetchTask, createTask,
@@ -38,10 +38,13 @@ export function useTasks(projectId?: string) {
 export function useTask(id?: string) {
   const dispatch = useAppDispatch()
   const task = useAppSelector((s) => id ? tasksSelectors.selectById(s, id) : undefined)
+  const requestedId = useRef<string | null>(null)
 
   useEffect(() => {
-    if (id) dispatch(fetchTask(id))
-  }, [dispatch, id])
+    if (!id || requestedId.current === id) return
+    requestedId.current = id
+    if (!task) dispatch(fetchTask(id))
+  }, [dispatch, id, task])
 
   return task
 }

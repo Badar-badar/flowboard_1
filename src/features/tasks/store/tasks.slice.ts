@@ -43,6 +43,7 @@ const tasksSlice = createSlice({
     removeTaskFromStore(s, { payload }: { payload: string }) {
       adapter.removeOne(s, payload)
       s.myIds = s.myIds.filter((id) => id !== payload)
+      s.error = null
     },
     includeCreatedTaskInMyTasks(s, { payload }: { payload: ITasks.Task }) {
       adapter.upsertOne(s, payload)
