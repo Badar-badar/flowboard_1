@@ -297,7 +297,59 @@ export function MyTasksBoard({
   const [name, setName] = useState('')
   const [collapseAll, setCollapseAll] = useState(false)
   const boardRef = useRef<HTMLDivElement>(null)
+  const scrollbarRef = useRef<HTMLDivElement>(null)
+  const [scrollbar, setScrollbar] = useState({ left: 0, width: 0, contentWidth: 0, visible: false })
   const scrollAfterAdd = useRef(false)
+
+  useEffect(() => {
+    const board = boardRef.current
+    if (!board) return
+    const update = () => {
+      const rect = board.getBoundingClientRect()
+      const contentWidth = rect.width * (board.scrollWidth / Math.max(1, board.clientWidth))
+      setScrollbar({ left: rect.left, width: rect.width, contentWidth, visible: board.scrollWidth > board.clientWidth + 1 })
+      const proxy = scrollbarRef.current
+      if (proxy) {
+        const boardMax = board.scrollWidth - board.clientWidth
+        const proxyMax = proxy.scrollWidth - proxy.clientWidth
+        if (boardMax > 0 && proxyMax > 0) proxy.scrollLeft = (board.scrollLeft / boardMax) * proxyMax
+      }
+    }
+    const frame = requestAnimationFrame(update)
+    const observer = new ResizeObserver(update)
+    observer.observe(board)
+    const mutationObserver = new MutationObserver(update)
+    mutationObserver.observe(board, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] })
+    window.addEventListener('resize', update)
+    return () => {
+      cancelAnimationFrame(frame)
+      observer.disconnect()
+      mutationObserver.disconnect()
+      window.removeEventListener('resize', update)
+    }
+  }, [columns, addingSection, collapseAll, composerLane, hideEmptyColumns])
+
+  const syncProxyScroll = () => {
+    const board = boardRef.current
+    const proxy = scrollbarRef.current
+    if (!board || !proxy) return
+    const boardMax = board.scrollWidth - board.clientWidth
+    const proxyMax = proxy.scrollWidth - proxy.clientWidth
+    if (boardMax <= 0 || proxyMax <= 0) return
+    const next = (proxy.scrollLeft / proxyMax) * boardMax
+    if (Math.abs(board.scrollLeft - next) > 1) board.scrollLeft = next
+  }
+
+  const syncBoardScroll = () => {
+    const board = boardRef.current
+    const proxy = scrollbarRef.current
+    if (!board || !proxy) return
+    const boardMax = board.scrollWidth - board.clientWidth
+    const proxyMax = proxy.scrollWidth - proxy.clientWidth
+    if (boardMax <= 0 || proxyMax <= 0) return
+    const next = (board.scrollLeft / boardMax) * proxyMax
+    if (Math.abs(proxy.scrollLeft - next) > 1) proxy.scrollLeft = next
+  }
 
   useEffect(() => {
     if (addingSection) boardRef.current?.scrollTo({ left: boardRef.current.scrollWidth, behavior: 'smooth' })
@@ -334,14 +386,15 @@ export function MyTasksBoard({
   }
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={pointerWithin}
-      onDragStart={({ active }) => setActiveId(String(active.id))}
-      onDragEnd={onDragEnd}
-      onDragCancel={() => setActiveId(null)}
-    >
-      <div ref={boardRef} className="asana-scroll flex min-h-0 flex-1 items-stretch gap-4 overflow-x-auto overflow-y-hidden px-6 pb-4 pt-4 [--scroll-bg:#1e1f21]">
+    <>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={pointerWithin}
+        onDragStart={({ active }) => setActiveId(String(active.id))}
+        onDragEnd={onDragEnd}
+        onDragCancel={() => setActiveId(null)}
+      >
+      <div ref={boardRef} onScroll={syncBoardScroll} className="asana-scroll project-board-horizontal-scroll flex min-h-0 flex-1 items-stretch gap-4 overflow-x-auto overflow-y-hidden px-6 pb-4 pt-4 [--scroll-bg:#1e1f21]">
         {columns.filter((column) => !hideEmptyColumns || column.tasks.length > 0 || composerLane === column.id).map((column) => (
           <Column
             key={column.id}
@@ -422,7 +475,23 @@ export function MyTasksBoard({
           </div>
         )}
       </DragOverlay>
-    </DndContext>
+      </DndContext>
+      {scrollbar.visible && createPortal(
+        <div
+          ref={scrollbarRef}
+          role="region"
+          aria-label="Scroll tasks horizontally"
+          aria-orientation="horizontal"
+          tabIndex={0}
+          onScroll={syncProxyScroll}
+          style={{ left: scrollbar.left, width: scrollbar.width }}
+          className="fixed-board-scrollbar fixed bottom-0 z-30 h-4 overflow-x-auto overflow-y-hidden bg-[#1e1f21] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-400"
+        >
+          <div style={{ width: scrollbar.contentWidth, height: 1 }} />
+        </div>,
+        document.body,
+      )}
+    </>
   )
 }
 
