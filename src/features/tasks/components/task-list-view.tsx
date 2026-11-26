@@ -6,7 +6,7 @@ import AddTaskRow from './add-task-row'
 import { useTasks } from '../hooks/use-tasks'
 import { useProjectMembers } from '../../members/hooks/use-project-members'
 import { useWorkspace } from '../../workspace/hooks/use-workspace'
-import { addDaysToDateInput, getTaskDueSection, TASK_DUE_SECTIONS, TASK_STATUSES, toDateInput } from '../task-constants'
+import { getTaskDueSection, TASK_DUE_SECTIONS, TASK_STATUSES, toDateInput } from '../task-constants'
 import { canEditTasks } from '../task-permissions'
 import type { ITasks } from '../types/tasks.types'
 import type { ComponentType, ReactNode } from 'react'
@@ -149,13 +149,7 @@ export default function TaskListView({ projectId, role, onOpen }: { projectId: s
   }
 
   const addDueGroupTask = async (group: DueSection, title: string, dueDate?: string) => {
-    const defaultDueDate: Record<string, string | undefined> = {
-      today,
-      week: addDaysToDateInput(today, 3),
-      later: addDaysToDateInput(today, 14),
-      overdue: addDaysToDateInput(today, -1),
-    }
-    const task = await addTask({ title, status: 'todo', dueDate: dueDate || defaultDueDate[group.id] })
+    const task = await addTask({ title, status: 'todo', dueDate: dueDate || undefined })
     if (group.custom) {
       const next = { ...laneOverrides, [task._id]: group.id }
       setLaneOverrides(next)
