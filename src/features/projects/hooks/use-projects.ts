@@ -9,11 +9,14 @@ export function useProjects({ autoFetch = false }: { autoFetch?: boolean } = {})
   const dispatch = useAppDispatch()
   const projects = useAppSelector(projectsSelectors.selectAll)
   const { loaded, loading, creating, error } = useAppSelector((s) => s.projects)
+  const cachedWorkspaceId = useAppSelector((s) => s.projects.workspaceId)
   const activeId = useAppSelector((s) => s.workspace.activeId)
 
   useEffect(() => {
-    if (autoFetch && activeId) dispatch(fetchProjects(activeId))
-  }, [dispatch, autoFetch, activeId]) // refetches when the workspace changes
+    if (autoFetch && activeId && !(loaded && cachedWorkspaceId === activeId) && !(loading && cachedWorkspaceId === activeId)) {
+      dispatch(fetchProjects(activeId))
+    }
+  }, [dispatch, autoFetch, activeId, loaded, loading, cachedWorkspaceId]) // fetch once when the workspace cache is empty
 
   return {
     projects,

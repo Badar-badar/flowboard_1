@@ -15,18 +15,22 @@ const adapter = createEntityAdapter<ITasks.Task, string>({
 
 interface TasksState {
   loadedProjects: Record<string, boolean>
+  loadingProjects: Record<string, boolean>
   myIds: string[]
   myLoaded: boolean
   myRequestId: string | null
+  pendingCreates: Record<string, string>
   backups: Record<string, Partial<ITasks.Task>>
   error: string | null
 }
 
 const initialState = adapter.getInitialState<TasksState>({
   loadedProjects: {},  // projectId -> true after the first fetch
+  loadingProjects: {},
   myIds: [],
   myLoaded: false,
   myRequestId: null,
+  pendingCreates: {},
   backups: {},         // requestId -> previous values, for optimistic rollback
   error: null,
 })
@@ -36,26 +40,34 @@ const tasksSlice = createSlice({
   initialState,
   reducers: {
     clearTasksError(s) { s.error = null },
+    includeCreatedTaskInMyTasks(s, { payload }: { payload: ITasks.Task }) {
+      adapter.upsertOne(s, payload)
+      if (!s.myIds.includes(payload._id)) s.myIds.unshift(payload._id)
+      s.myLoaded = true
+    },
   },
   extraReducers: (builder) => {
     builder
       .addCase(fetchProjectTasks.fulfilled, (s, { payload, meta }) => {
         const projectId = meta.arg
+        s.loadingProjects[projectId] = false
         const fresh = new Set(payload.map((t) => t._id))
         // remove tasks of this project that no longer exist on the server
-        const stale = s.ids.filter((id) => s.entities[id].projectId === projectId && !fresh.has(id))
+        const pendingIds = new Set(Object.values(s.pendingCreates))
+        const stale = s.ids.filter((id) => s.entities[id].projectId === projectId && !fresh.has(id) && !pendingIds.has(id))
         adapter.removeMany(s, stale)
         adapter.upsertMany(s, payload)
         s.loadedProjects[projectId] = true
       })
       .addCase(fetchProjectTasks.rejected, (s, { payload, meta }) => {
+        s.loadingProjects[meta.arg] = false
         s.loadedProjects[meta.arg] = true
         s.error = payload
       })
+      .addCase(fetchProjectTasks.pending, (s, { meta }) => { s.loadingProjects[meta.arg] = true })
 
       .addCase(fetchMyTasks.pending, (s, { meta }) => {
         s.myRequestId = meta.requestId
-        s.myLoaded = false
       })
       .addCase(fetchMyTasks.fulfilled, (s, { payload, meta }) => {
         if (s.myRequestId !== meta.requestId) return
@@ -73,8 +85,33 @@ const tasksSlice = createSlice({
 
       .addCase(fetchTask.fulfilled, (s, { payload }) => { adapter.upsertOne(s, payload) })
 
-      .addCase(createTask.fulfilled, (s, { payload }) => { adapter.addOne(s, payload) })
-      .addCase(createTask.rejected, (s, { payload }) => { s.error = payload })
+      .addCase(createTask.pending, (s, { meta }) => {
+        const temporaryId = `pending-${meta.requestId}`
+        s.pendingCreates[meta.requestId] = temporaryId
+        adapter.addOne(s, {
+          _id: temporaryId,
+          projectId: meta.arg.projectId,
+          title: meta.arg.data.title,
+          status: meta.arg.data.status ?? 'todo',
+          priority: meta.arg.data.priority ?? 'medium',
+          assigneeId: meta.arg.data.assigneeId ?? null,
+          dueDate: meta.arg.data.dueDate ?? null,
+          attachments: [],
+          createdAt: new Date().toISOString(),
+        })
+      })
+      .addCase(createTask.fulfilled, (s, { payload, meta }) => {
+        const temporaryId = s.pendingCreates[meta.requestId]
+        if (temporaryId) adapter.removeOne(s, temporaryId)
+        delete s.pendingCreates[meta.requestId]
+        adapter.upsertOne(s, payload)
+      })
+      .addCase(createTask.rejected, (s, { payload, meta }) => {
+        const temporaryId = s.pendingCreates[meta.requestId]
+        if (temporaryId) adapter.removeOne(s, temporaryId)
+        delete s.pendingCreates[meta.requestId]
+        s.error = payload
+      })
 
       // optimistic update
       .addCase(updateTask.pending, (s, { meta }) => {
@@ -118,7 +155,7 @@ const tasksSlice = createSlice({
   },
 })
 
-export const { clearTasksError } = tasksSlice.actions
+export const { clearTasksError, includeCreatedTaskInMyTasks } = tasksSlice.actions
 export const tasksSelectors = adapter.getSelectors((state: RootState) => state.tasks)
 
 export const selectTasksByProject = createSelector(

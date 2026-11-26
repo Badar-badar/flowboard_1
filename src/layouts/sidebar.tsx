@@ -1,82 +1,18 @@
 import { useState } from 'react'
-import { useAppSelector } from '../app/hooks'
+import { useAppDispatch, useAppSelector } from '../app/hooks'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { PATHS } from '../app/paths'
 import AvatarMenu from './avatar-menu'
+import { useAuth } from '../features/auth/hooks/use-auth'
 import ProjectIcon from '../features/projects/components/project-icon'
 import { projectsSelectors } from '../features/projects/store/projects.slice'
-import type { LucideIcon } from 'lucide-react'
+import { fetchProjects } from '../features/projects/store/projects.thunks'
+import { fetchMyTasks, fetchProjectTasks } from '../features/tasks/store/tasks.thunks'
 
 import {
-  LayoutGrid, Bot, Triangle, Map, User, Ellipsis,
   Home, CircleCheck, ClipboardList,
-  ChevronDown, Plus, CircleHelp, UserPlus, X,
+  ChevronDown, Plus, X,
 } from 'lucide-react'
-
-const railItems: { label: string; icon: LucideIcon; active?: boolean }[] = [
-  { label: 'Work', icon: LayoutGrid, active: true },
-  { label: 'Agents', icon: Bot },
-  { label: 'Strategy', icon: Triangle },
-  { label: 'Knowledge', icon: Map },
-  { label: 'People', icon: User },
-]
-
-function RailButton({ label, icon: Icon, active = false, onClick }: {
-  label: string
-  icon: LucideIcon
-  active?: boolean
-  onClick?: () => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className="group flex w-full flex-col items-center gap-1 py-1"
-    >
-      <span
-        className={`flex h-8 w-8 items-center justify-center rounded-xl transition-colors ${
-          active ? 'bg-[#3a3b3d] text-white' : 'text-slate-400 group-hover:bg-white/10'
-        }`}
-      >
-        <Icon className="h-6 w-6" strokeWidth={2} fill={active ? 'currentColor' : 'none'} />
-      </span>
-      <span className={`text-xs ${active ? 'text-white' : 'text-slate-400'}`}>
-        {label}
-      </span>
-    </button>
-  )
-}
-
-function Rail({ panelOpen, onWorkClick }: { panelOpen: boolean; onWorkClick: () => void }) {
-  return (
-    <div className="flex w-[59px] shrink-0 flex-col items-center bg-[#1e1f21] py-1">
-      <div className="w-full space-y-0.5 px-2">
-        {railItems.map((item) => (
-          <RailButton
-            key={item.label}
-            {...item}
-            active={item.label === 'Work' ? panelOpen : item.active}
-            onClick={item.label === 'Work' ? onWorkClick : undefined}
-          />
-        ))}
-        <button className="group flex w-full flex-col items-center gap-1 py-1">
-          <span className="flex h-10 w-12 items-center justify-center text-slate-400">
-            <Ellipsis className="h-6 w-6" />
-          </span>
-          <span className="text-xs text-slate-400">More</span>
-        </button>
-      </div>
-
-      <div className="mt-auto flex flex-col items-center gap-3 pb-2">
-        <button className="text-slate-400 hover:text-white">
-          <CircleHelp className="h-5 w-5" />
-        </button>
-       <AvatarMenu />
-      </div>
-    </div>
-  )
-}
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   `flex items-center gap-3 rounded-lg px-2 py-1.5 text-[13px] transition-colors ${
@@ -87,13 +23,30 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
 
 function Panel({ mobile = false, onClose }: { mobile?: boolean; onClose?: () => void }) {
   const [workOpen, setWorkOpen] = useState(true)
+  const dispatch = useAppDispatch()
   const projects = useAppSelector(projectsSelectors.selectAll)
+  const activeId = useAppSelector((state) => state.workspace.activeId)
+  const projectCache = useAppSelector((state) => state.projects)
+  const taskCache = useAppSelector((state) => state.tasks)
+  const { user } = useAuth()
   const navigate = useNavigate()
+  const accountName = user?.displayName?.trim() || user?.email?.split('@')[0] || 'User'
+
+  const prefetchProjects = () => {
+    if (activeId && !(projectCache.loaded && projectCache.workspaceId === activeId) && !(projectCache.loading && projectCache.workspaceId === activeId)) {
+      dispatch(fetchProjects(activeId))
+    }
+  }
+  const prefetchMyTasks = () => {
+    if (activeId && !taskCache.myLoaded && !taskCache.myRequestId) dispatch(fetchMyTasks())
+  }
+  const prefetchProjectTasks = (projectId: string) => {
+    if (!taskCache.loadedProjects[projectId] && !taskCache.loadingProjects[projectId]) dispatch(fetchProjectTasks(projectId))
+  }
 
   return (
-    <div className="flex h-full w-[190px] flex-col">
-      <div className="flex h-12 shrink-0 items-center justify-between px-3">
-        <h2 className="text-sm font-small text-slate-400">Work</h2>
+    <div className="flex h-full w-[250px] flex-col">
+      <div className="flex h-3 shrink-0 items-center justify-end px-3">
         {mobile && <button type="button" aria-label="Close menu" onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/10 hover:text-white"><X className="h-5 w-5" /></button>}
       </div>
 
@@ -103,10 +56,10 @@ function Panel({ mobile = false, onClose }: { mobile?: boolean; onClose?: () => 
         </NavLink>
         <hr className="!my-3 border-white/10" />
 
-        <NavLink to={PATHS.tasks} className={linkClass}>
+        <NavLink to={PATHS.tasks} onMouseEnter={prefetchMyTasks} onFocus={prefetchMyTasks} className={linkClass}>
           <CircleCheck className="h-5 w-5" /> My tasks
         </NavLink>
-        <NavLink to={PATHS.projects} end className={linkClass}>
+        <NavLink to={PATHS.projects} end onMouseEnter={prefetchProjects} onFocus={prefetchProjects} className={linkClass}>
           <ClipboardList className="h-5 w-5" /> Projects
         </NavLink>
       </nav>
@@ -130,33 +83,16 @@ function Panel({ mobile = false, onClose }: { mobile?: boolean; onClose?: () => 
         </div>
 
         {workOpen && projects.map((p) => (
-        <NavLink key={p._id} to={PATHS.projectDetail(p._id)} className={linkClass}>
+        <NavLink key={p._id} to={PATHS.projectDetail(p._id)} onMouseEnter={() => prefetchProjectTasks(p._id)} onFocus={() => prefetchProjectTasks(p._id)} className={linkClass}>
           <ProjectIcon color={p.color} size="h-6 w-6" />
           <span className="truncate">{p.name}</span>
         </NavLink>
       ))}
       </div>
 
-      {/* Bottom: trial card + invite */}
-      <div className="space-y-1 p-1">
-        <div className="rounded-xl border border-white/10 p-1.5">
-          <div className="flex items-center gap-3">
-            <svg viewBox="0 0 36 36" className="h-8 w-8 shrink-0">
-              <circle cx="18" cy="18" r="14" fill="none" stroke="#2f9e58" strokeWidth="5" />
-            </svg>
-            <div>
-              <p className="text-sm font-medium text-white">Advanced trial</p>
-              <p className="text-sm text-emerald-400">14 days left</p>
-            </div>
-          </div>
-          <button className="mt-3 w-full rounded-lg bg-[#ecc200] py-1.5 text-sm font-medium text-black hover:bg-[#f5cf1a]">
-            Add billing info
-          </button>
-        </div>
-
-        <button className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 py-1.5 text-sm text-slate-200 hover:bg-white/5">
-          <UserPlus className="h-5 w-5" /> Invite
-        </button>
+      <div className="mt-auto flex h-16 shrink-0 items-center gap-3 border-t border-white/10 px-3">
+        <AvatarMenu />
+        <span className="min-w-0 truncate text-sm font-medium text-slate-200">{accountName}</span>
       </div>
     </div>
   )
@@ -165,18 +101,16 @@ function Panel({ mobile = false, onClose }: { mobile?: boolean; onClose?: () => 
 /* ---------- Export ---------- */
 export default function Sidebar({ open, onWorkClick, mobile = false, onClose }: { open: boolean; onWorkClick: () => void; mobile?: boolean; onClose?: () => void }) {
   return (
-    <aside className="flex h-full shrink-0 bg-[#1e1f21] text-slate-200">
-      <Rail panelOpen={open} onWorkClick={onWorkClick} />
-      {/* Outer wrapper animates width; inner panel keeps fixed width so text doesn't reflow */}
-      <div
-        className={`overflow-hidden transition-all duration-200 ${
-          open ? 'w-[190px]' : 'w-0'
-        }`}
-      >
-        <div className="h-full rounded-tl-2xl border-l border-t border-white/10 bg-[#252628]">
+    <aside className={`relative flex h-full shrink-0 transition-[width] duration-200 ${open ? 'w-[250px]' : 'w-[56px]'}`}>
+      {open ? (
+        <div className="h-full rounded-tr-2xl border-r border-t border-white/10 bg-[#252628] text-slate-200">
           <Panel mobile={mobile} onClose={onClose} />
         </div>
-      </div>
+      ) : (
+        <div className="flex h-full w-full flex-col items-center bg-[#1e1f21] px-2 py-2">
+          <div className="mt-auto pb-1"><AvatarMenu /></div>
+        </div>
+      )}
     </aside>
   )
 }

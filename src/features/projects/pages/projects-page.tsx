@@ -295,7 +295,12 @@ export default function Projects() {
         <span aria-hidden="true" />
       </div>
 
-      {!loaded && loading && <p className="px-5 py-8 text-sm text-slate-400">Loading projects...</p>}
+      {!loaded && loading && <div className="space-y-2 py-3" aria-label="Loading projects" aria-busy="true">
+        {[0, 1, 2, 3].map((item) => <div key={item} className="grid min-h-[74px] grid-cols-[minmax(0,1fr)_160px_minmax(100px,1fr)_auto] items-center gap-4 border-b border-white/[0.06] px-5">
+          <div className="flex items-center gap-3"><span className="h-8 w-8 animate-pulse rounded-lg bg-white/10" /><span className="space-y-2"><span className="block h-3 w-32 animate-pulse rounded bg-white/10" /><span className="block h-3 w-16 animate-pulse rounded bg-white/[0.06]" /></span></div>
+          <span className="h-7 w-24 animate-pulse rounded-full bg-white/[0.06] max-sm:hidden" /><span /><span />
+        </div>)}
+      </div>}
 
       {error && (
         <p className="px-5 py-6 text-sm text-rose-400">

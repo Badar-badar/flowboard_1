@@ -15,6 +15,8 @@ export default function ProjectRow({ project }: { project: IProjects.Project }) 
   const [favorite, setFavorite] = useState(Boolean(project.isFavorite))
   const [inviting, setInviting] = useState(false)
   const [savingFavorite, setSavingFavorite] = useState(false)
+  const role = project.role?.trim().toLowerCase().replace(/[\s-]+/g, '_')
+  const canInvite = role === 'admin' || role === 'owner' || role === 'project_admin' || role === 'workspace_admin'
   const statusName = project.status
     ? project.status.replaceAll('_', ' ').replace(/\b\w/g, (character) => character.toUpperCase())
     : 'Joined'
@@ -60,7 +62,7 @@ export default function ProjectRow({ project }: { project: IProjects.Project }) 
         <button type="button" onClick={onFavorite} disabled={savingFavorite} aria-label={favorite ? 'Remove project from favorites' : 'Add project to favorites'} title={favorite ? 'Remove from favorites' : 'Add to favorites'} className="rounded-md p-2 text-slate-400 transition hover:bg-white/10 hover:text-amber-300 disabled:opacity-50">
           <Star className={`h-4 w-4 ${favorite ? 'fill-amber-300 text-amber-300' : ''}`} />
         </button>
-        {project.role === 'admin' && <button type="button" onClick={() => setInviting(true)} className="inline-flex h-9 items-center gap-2 rounded-md bg-[#292a2c] px-3 text-sm font-medium text-slate-100 transition hover:bg-[#343537]" title="Invite project members"><UserPlus className="h-4 w-4 text-slate-400" />Invite</button>}
+        {canInvite && <button type="button" onClick={() => setInviting(true)} className="inline-flex h-9 items-center gap-2 rounded-md bg-[#292a2c] px-3 text-sm font-medium text-slate-100 transition hover:bg-[#343537]" title="Invite project members"><UserPlus className="h-4 w-4 text-slate-400" />Invite</button>}
       </div>
       {inviting && <InviteMembersModal scope="project" projectId={project._id} projectName={project.name} workspaceId={workspaceId ?? undefined} onClose={() => setInviting(false)} />}
     </div>

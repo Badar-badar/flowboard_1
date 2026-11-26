@@ -15,7 +15,7 @@ interface WorkspaceState {
 const initialState: WorkspaceState = {
   items: [],
   activeId: null,
-  loaded: false, // NEW: false until the first fetch finishes
+  loaded: false, 
   loading: false,
   creating: false,
   error: null,

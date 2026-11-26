@@ -282,7 +282,18 @@ function MyTasksPage({ workspaceId }: { workspaceId: string }) {
       )}
 
       {!loaded ? (
-        <p className="px-0 py-8 text-sm text-slate-400">Loading tasks...</p>
+        view === 'Board' ? (
+          <div className="flex min-h-0 flex-1 gap-4 overflow-hidden py-3" aria-label="Loading tasks" aria-busy="true">
+            {['Upcoming', 'Today', 'This week', 'Later'].map((lane) => <section key={lane} className="flex w-[280px] shrink-0 flex-col rounded-xl border border-white/10 bg-[#252628] p-3">
+              <div className="mb-4 flex items-center justify-between"><span className="h-4 w-24 animate-pulse rounded bg-white/10" /><span className="h-4 w-6 animate-pulse rounded bg-white/10" /></div>
+              {[0, 1, 2].map((item) => <div key={item} className="mb-2 rounded-lg border border-white/[0.06] bg-[#2b2c2e] p-3"><span className="mb-2 block h-3 w-4/5 animate-pulse rounded bg-white/10" /><span className="block h-3 w-2/5 animate-pulse rounded bg-white/[0.06]" /></div>)}
+            </section>)}
+          </div>
+        ) : (
+          <div className="space-y-3 py-4" aria-label="Loading tasks" aria-busy="true">
+            {[0, 1, 2, 3, 4].map((item) => <div key={item} className="grid h-12 grid-cols-[minmax(0,1fr)_180px_190px_220px_160px] items-center gap-3 border-b border-white/[0.06]"><span className="h-3 w-2/3 animate-pulse rounded bg-white/10" /><span className="h-3 w-20 animate-pulse rounded bg-white/[0.06]" /><span /><span /><span /></div>)}
+          </div>
+        )
       ) : view === 'Board' ? (
         <MyTasksBoard
           columns={columns}

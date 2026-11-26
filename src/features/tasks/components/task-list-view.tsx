@@ -49,7 +49,7 @@ export default function TaskListView({ projectId, role, onOpen }: { projectId: s
   const sectionEditCommitted = useRef(false)
   const [sectionQuickAddId, setSectionQuickAddId] = useState<string | null>(null)
   const [sectionTasks, setSectionTasks] = useState<Record<string, string[]>>({})
-  const [groupMode, setGroupMode] = useState<string>('custom')
+  const [groupMode, setGroupMode] = useState<string>('due')
   const [customLanes, setCustomLanes] = useState<CustomLane[]>(() => readWorkspaceSetting(workspaceId, 'lanes', []))
   const [laneOverrides, setLaneOverrides] = useState<Record<string, string>>(() => readWorkspaceSetting(workspaceId, 'overrides', {}))
   const [laneNames, setLaneNames] = useState<Record<string, string>>(() => readWorkspaceSetting(workspaceId, 'lane-names', {}))
@@ -61,7 +61,16 @@ export default function TaskListView({ projectId, role, onOpen }: { projectId: s
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [sortMode, setSortMode] = useState<string>('created')
   const [hideCompleted, setHideCompleted] = useState(false)
+  const [editingLaneId, setEditingLaneId] = useState<string | null>(null)
+  const [laneDraft, setLaneDraft] = useState('')
+  const [newLaneName, setNewLaneName] = useState('')
+  const [addingLane, setAddingLane] = useState(false)
+  const cancelLaneEdit = useRef(false)
   const canAdd = canEditTasks(role)
+
+  const saveLaneSetting = <T,>(key: string, value: T) => {
+    try { localStorage.setItem(`my-tasks:${key}:${workspaceId ?? 'none'}`, JSON.stringify(value)) } catch { /* ignore unavailable storage */ }
+  }
 
   const visibleTasks = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -105,6 +114,39 @@ export default function TaskListView({ projectId, role, onOpen }: { projectId: s
   )
   const sectionTaskIds = new Set<string>(Object.values(sectionTasks).flat())
   const unsectionedTasks = visibleTasks.filter((task) => !sectionTaskIds.has(task._id))
+
+  const saveLaneName = (section: DueSection) => {
+    if (cancelLaneEdit.current) {
+      cancelLaneEdit.current = false
+      return
+    }
+    const label = laneDraft.trim()
+    if (label && label !== section.label) {
+      if (section.custom) {
+        const next = customLanes.map((lane) => lane.id === section.id ? { ...lane, label } : lane)
+        setCustomLanes(next)
+        saveLaneSetting('lanes', next)
+      } else {
+        const next = { ...laneNames, [section.id]: label }
+        setLaneNames(next)
+        saveLaneSetting('lane-names', next)
+      }
+    }
+    setEditingLaneId(null)
+  }
+
+  const addDueSection = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const label = newLaneName.trim()
+    if (!label) return
+    const next = [...customLanes, { id: `custom-${Date.now()}`, label }]
+    setCustomLanes(next)
+    saveLaneSetting('lanes', next)
+    setHideEmptyColumns(false)
+    saveLaneSetting('hide-empty', false)
+    setNewLaneName('')
+    setAddingLane(false)
+  }
 
   const onEdit = (id: string, changes: ITasks.UpdatePayload) => editTask(id, changes).catch(() => {})
   const onDelete = async (task: ITasks.Task) => {
@@ -203,11 +245,34 @@ export default function TaskListView({ projectId, role, onOpen }: { projectId: s
         </section>
       )) : groupMode === 'due' ? dueGroups.map((group) => (
         <section key={group.id}>
-          <button type="button" onClick={() => setCollapsed((current) => ({ ...current, [group.id]: !current[group.id] }))} className="flex min-h-9 w-full items-center gap-2 border-b border-white/10 px-3 text-left hover:bg-white/[0.025]">
-            <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform ${collapsed[group.id] ? '-rotate-90' : ''}`} />
-            <span className="text-base font-semibold text-slate-100">{group.label}</span>
+          <div className="flex min-h-9 w-full items-center gap-2 border-b border-white/10 px-3 text-left hover:bg-white/[0.025]">
+            <button type="button" aria-label={collapsed[group.id] ? `Expand ${group.label}` : `Collapse ${group.label}`} onClick={() => setCollapsed((current) => ({ ...current, [group.id]: !current[group.id] }))} className="flex h-7 w-5 shrink-0 items-center justify-center rounded text-slate-400 hover:bg-white/10 hover:text-white">
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${collapsed[group.id] ? '-rotate-90' : ''}`} />
+            </button>
+            {editingLaneId === group.id ? (
+              <input
+                autoFocus
+                value={laneDraft}
+                maxLength={40}
+                onChange={(event) => setLaneDraft(event.target.value)}
+                onBlur={() => saveLaneName(group)}
+                onClick={(event) => event.stopPropagation()}
+                onKeyDown={(event) => {
+                  event.stopPropagation()
+                  if (event.key === 'Enter') { event.preventDefault(); event.currentTarget.blur() }
+                  if (event.key === 'Escape') { cancelLaneEdit.current = true; setLaneDraft(group.label); setEditingLaneId(null) }
+                }}
+                className="h-7 w-60 rounded border border-white/20 bg-[#252628] px-2 text-sm font-semibold text-white outline-none focus:border-white/50"
+                aria-label="Section name"
+              />
+            ) : (
+              <span
+                className="cursor-text rounded px-1 text-base font-semibold text-slate-100 hover:bg-white/5"
+                onClick={() => { setLaneDraft(group.label); setEditingLaneId(group.id) }}
+              >{group.label}</span>
+            )}
             <span className="text-xs text-slate-500">{group.items.length}</span>
-          </button>
+          </div>
           {!collapsed[group.id] && <>
             {group.items.map((task) => <TaskRow key={task._id} task={task} role={role} meId={meId} members={members} active={activeTaskId === task._id} onOpen={(id) => { setActiveTaskId(id); onOpen(id) }} onEdit={onEdit} onDelete={onDelete} />)}
             {canAdd && <AddTaskRow onAdd={(title, dueDate) => addTask({ title, status: 'todo', dueDate })} />}
@@ -272,6 +337,24 @@ export default function TaskListView({ projectId, role, onOpen }: { projectId: s
           {canAdd && <button type="button" onClick={() => setSections((current) => [...current, { id: `section-${Date.now()}`, name: 'Untitled section' }])} className="flex h-11 items-center gap-2 px-3 text-base font-medium text-slate-400 transition hover:bg-white/[0.035] hover:text-white"><Plus className="h-5 w-5" />Add section</button>}
         </>
       )}
+
+      {canAdd && groupMode === 'due' && <form onSubmit={addDueSection} className="border-b border-white/10">
+        {addingLane ? (
+          <input
+            autoFocus
+            value={newLaneName}
+            maxLength={40}
+            onChange={(event) => setNewLaneName(event.target.value)}
+            onKeyDown={(event) => { if (event.key === 'Escape') { setNewLaneName(''); setAddingLane(false) } }}
+            onBlur={() => { if (!newLaneName.trim()) { setNewLaneName(''); setAddingLane(false) } }}
+            placeholder="Section name"
+            aria-label="New section name"
+            className="m-2 h-9 w-60 rounded-md border border-white/20 bg-[#252628] px-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-white/50"
+          />
+        ) : (
+          <button type="button" onClick={() => setAddingLane(true)} className="flex h-11 w-full items-center gap-2 px-3 text-base font-medium text-slate-400 transition hover:bg-white/[0.035] hover:text-white"><Plus className="h-5 w-5" />Add section</button>
+        )}
+      </form>}
 
       {!visibleTasks.length && (query || statusFilter !== 'all' || hideCompleted) && (
         <p className="py-7 text-center text-xs text-slate-500">No tasks match these filters.</p>

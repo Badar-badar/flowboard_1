@@ -14,10 +14,30 @@ export default function AvatarMenu() {
   const { workspaces, activeId, switchTo } = useWorkspace()
   const [open, setOpen] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
-  const ref = useRef(null)
+  const [menuPosition, setMenuPosition] = useState({ left: 8, bottom: 8, width: 560 })
+  const ref = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+
+  const positionMenu = () => {
+    const rect = buttonRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const width = Math.max(0, Math.min(560, window.innerWidth - 16))
+    setMenuPosition({
+      left: Math.max(8, Math.min(rect.right + 12, window.innerWidth - width - 8)),
+      bottom: Math.max(8, window.innerHeight - rect.bottom),
+      width,
+    })
+  }
 
   useEffect(() => {
-    const onDown = (e) => {
+    if (!open) return
+    positionMenu()
+    window.addEventListener('resize', positionMenu)
+    return () => window.removeEventListener('resize', positionMenu)
+  }, [open])
+
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false)
     }
     const onKey = (e) => e.key === 'Escape' && setOpen(false)
@@ -35,16 +55,21 @@ export default function AvatarMenu() {
     <>
       <div ref={ref} className="relative">
         <button
+          type="button"
+          ref={buttonRef}
           onClick={() => setOpen((v) => !v)}
+          aria-label={`Open account menu for ${name}`}
+          aria-expanded={open}
+          title={name}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-200 text-sm font-medium text-slate-800 hover:ring-2 hover:ring-white/30"
         >
           {initials(name)}
         </button>
 
         {open && (
-          <div className="absolute bottom-0 left-full z-50 ml-3 flex w-[560px] overflow-hidden rounded-xl border border-white/10 bg-[#2a2b2d] shadow-2xl">
+          <div style={{ left: menuPosition.left, bottom: menuPosition.bottom, width: menuPosition.width }} className="fixed z-[60] flex max-h-[calc(100dvh-1rem)] flex-col overflow-hidden rounded-xl border border-white/10 bg-[#2a2b2d] shadow-2xl sm:flex-row">
             {/* Left: workspaces */}
-            <div className="w-[260px] border-r border-white/10 p-3">
+            <div className="w-full border-b border-white/10 p-3 sm:w-[260px] sm:shrink-0 sm:border-b-0 sm:border-r">
               <h3 className="px-2 pb-2 pt-1 text-lg font-semibold text-white">Account</h3>
               <ul className="max-h-72 space-y-0.5 overflow-y-auto">
                 {workspaces.map((w, index) => (
@@ -68,7 +93,7 @@ export default function AvatarMenu() {
             </div>
 
             {/* Right: profile */}
-            <div className="flex-1 p-4">
+            <div className="min-w-0 flex-1 p-4">
               <div className="flex items-center gap-4">
                 <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-rose-200 text-lg font-medium text-slate-800">
                   {initials(name)}

@@ -22,16 +22,23 @@ export default function AddTaskRow({ onAdd, compact = false, autoOpen = false, o
 
   const submit = async () => {
     const value = title.trim()
-    if (value.length < 2) return
+    if (value.length < 2 || busy) return
+    const selectedDueDate = dueDate || undefined
     setBusy(true)
+    setTitle('')
+    setDueDate('')
+    setOpen(false)
+    onClose?.()
     try {
-      await onAdd(value, dueDate || undefined)
-      setTitle('')
-      setDueDate('')
-      setOpen(false)
-      onClose?.()
-    } catch { /* the task list shows the error */ }
-    setBusy(false)
+      await onAdd(value, selectedDueDate)
+    } catch {
+      setTitle(value)
+      setDueDate(selectedDueDate ?? '')
+      setOpen(true)
+      /* The task list shows the error. Restore the draft so it can be retried. */
+    } finally {
+      setBusy(false)
+    }
   }
 
   const cancel = () => {
@@ -63,7 +70,7 @@ export default function AddTaskRow({ onAdd, compact = false, autoOpen = false, o
               <CalendarDays className="h-4 w-4" />
               <input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} onClick={(event) => event.currentTarget.showPicker?.()} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" aria-label="Task due date" />
             </label>
-            <button type="button" onClick={submit} disabled={busy || title.trim().length < 2} className="rounded-md bg-blue-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-400 disabled:opacity-50">{busy ? 'Adding…' : 'Add task'}</button>
+            <button type="button" onClick={submit} disabled={busy || title.trim().length < 2} className="rounded-md bg-blue-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-400 disabled:opacity-50">Add task</button>
           </div>
         </div>
       ) : (
@@ -113,7 +120,7 @@ export default function AddTaskRow({ onAdd, compact = false, autoOpen = false, o
           ? 'inline-flex h-8 items-center gap-2 rounded-md border border-white/15 px-3 text-sm font-medium text-slate-100 transition hover:bg-white/5'
           : 'flex min-h-16 w-full items-center gap-3 pl-16 pr-4 text-left text-[15px] text-slate-400 transition hover:bg-white/[0.045] hover:text-slate-100'}
       >
-        {compact && <Plus className="h-4 w-4" />}{busy ? 'Adding…' : 'Add task'}
+        {compact && <Plus className="h-4 w-4" />}Add task
         {compact && <span aria-hidden="true" className="ml-1 flex h-full items-center border-l border-white/15 pl-2"><ChevronDown className="h-4 w-4 text-slate-400" /></span>}
       </button>
     </div>

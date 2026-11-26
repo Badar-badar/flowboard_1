@@ -11,11 +11,12 @@ export function useTasks(projectId?: string) {
   const dispatch = useAppDispatch()
   const tasks = useAppSelector((s) => projectId ? selectTasksByProject(s, projectId) : [])
   const loaded = useAppSelector((s) => !!(projectId && s.tasks.loadedProjects[projectId]))
+  const loading = useAppSelector((s) => !!(projectId && s.tasks.loadingProjects[projectId]))
   const error = useAppSelector((s) => s.tasks.error)
 
   useEffect(() => {
-    if (projectId) dispatch(fetchProjectTasks(projectId))
-  }, [dispatch, projectId])
+    if (projectId && !loaded && !loading) dispatch(fetchProjectTasks(projectId))
+  }, [dispatch, projectId, loaded, loading])
 
   return {
     tasks,
@@ -49,11 +50,12 @@ export function useMyTasks() {
   const dispatch = useAppDispatch()
   const tasks = useAppSelector(selectMyTasks)
   const loaded = useAppSelector((s) => s.tasks.myLoaded)
+  const loading = useAppSelector((s) => s.tasks.myRequestId !== null)
   const activeId = useAppSelector((s) => s.workspace.activeId)
 
   useEffect(() => {
-    if (activeId) dispatch(fetchMyTasks())
-  }, [dispatch, activeId])
+    if (activeId && !loaded && !loading) dispatch(fetchMyTasks())
+  }, [dispatch, activeId, loaded, loading])
 
   // No active workspace means there is nothing to fetch. Treat it as an
   // already-loaded empty result so the page can show its empty state.

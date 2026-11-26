@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { DndContext, DragOverlay, PointerSensor, pointerWithin, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
 import { CalendarDays, Check, ChevronDown, ChevronRight, Columns3, EyeOff, FileText, MoreHorizontal, Pencil, Plus, ThumbsUp, Trash2 } from 'lucide-react'
 import Dropdown from '../../../components/ui/dropdown'
@@ -437,6 +438,8 @@ export default function TaskBoardView({ projectId, role, onOpen }: { projectId: 
   const [sectionName, setSectionName] = useState('')
   const [collapseAll, setCollapseAll] = useState(false)
   const boardRef = useRef<HTMLDivElement>(null)
+  const scrollbarRef = useRef<HTMLDivElement>(null)
+  const [scrollbar, setScrollbar] = useState({ left: 0, width: 0, contentWidth: 0, visible: false })
   const scrollAfterAdd = useRef(false)
   const [customLanes, setCustomLanes] = useState<Array<{ id: string; label: string }>>(() => readWorkspaceSetting(workspaceId, 'lanes', []))
   const [laneOverrides, setLaneOverrides] = useState<Record<string, string>>(() => readWorkspaceSetting(workspaceId, 'overrides', {}))
@@ -476,6 +479,61 @@ export default function TaskBoardView({ projectId, role, onOpen }: { projectId: 
   }, [addingSection])
 
   useEffect(() => {
+    const board = boardRef.current
+    if (!board) return
+    const update = () => {
+      const rect = board.getBoundingClientRect()
+      const contentWidth = rect.width * (board.scrollWidth / Math.max(1, board.clientWidth))
+      setScrollbar({
+        left: rect.left,
+        width: rect.width,
+        contentWidth,
+        visible: board.scrollWidth > board.clientWidth + 1,
+      })
+      const proxy = scrollbarRef.current
+      if (proxy) {
+        const boardMax = board.scrollWidth - board.clientWidth
+        const proxyMax = proxy.scrollWidth - proxy.clientWidth
+        if (boardMax > 0 && proxyMax > 0) proxy.scrollLeft = (board.scrollLeft / boardMax) * proxyMax
+      }
+    }
+    const frame = requestAnimationFrame(update)
+    const observer = new ResizeObserver(update)
+    observer.observe(board)
+    const mutationObserver = new MutationObserver(update)
+    mutationObserver.observe(board, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] })
+    window.addEventListener('resize', update)
+    return () => {
+      cancelAnimationFrame(frame)
+      observer.disconnect()
+      mutationObserver.disconnect()
+      window.removeEventListener('resize', update)
+    }
+  }, [columns, addingSection, collapseAll])
+
+  const syncProxyScroll = () => {
+    const board = boardRef.current
+    const proxy = scrollbarRef.current
+    if (!board || !proxy) return
+    const boardMax = board.scrollWidth - board.clientWidth
+    const proxyMax = proxy.scrollWidth - proxy.clientWidth
+    if (boardMax <= 0 || proxyMax <= 0) return
+    const next = (proxy.scrollLeft / proxyMax) * boardMax
+    if (Math.abs(board.scrollLeft - next) > 1) board.scrollLeft = next
+  }
+
+  const syncBoardScroll = () => {
+    const board = boardRef.current
+    const proxy = scrollbarRef.current
+    if (!board || !proxy) return
+    const boardMax = board.scrollWidth - board.clientWidth
+    const proxyMax = proxy.scrollWidth - proxy.clientWidth
+    if (boardMax <= 0 || proxyMax <= 0) return
+    const next = (board.scrollLeft / boardMax) * proxyMax
+    if (Math.abs(proxy.scrollLeft - next) > 1) proxy.scrollLeft = next
+  }
+
+  useEffect(() => {
     if (!scrollAfterAdd.current) return
     scrollAfterAdd.current = false
     boardRef.current?.scrollTo({ left: boardRef.current.scrollWidth, behavior: 'smooth' })
@@ -483,18 +541,35 @@ export default function TaskBoardView({ projectId, role, onOpen }: { projectId: 
 
   const addColumn = (label: string) => {
     setHideEmptyColumns(false)
-    setCustomLanes((current) => [...current, { id: `custom-${Date.now()}`, label }])
+    const next = [...customLanes, { id: `custom-${Date.now()}`, label }]
+    setCustomLanes(next)
+    localStorage.setItem(`my-tasks:lanes:${workspaceId ?? 'none'}`, JSON.stringify(next))
+    localStorage.setItem(`my-tasks:hide-empty:${workspaceId ?? 'none'}`, JSON.stringify(false))
   }
 
   const removeColumn = (column: Lane) => {
     if (column.tasks.length) return
-    if (column.custom) setCustomLanes((current) => current.filter((item) => item.id !== column.id))
-    else setDeletedLanes((current) => current.includes(column.id) ? current : [...current, column.id])
+    if (column.custom) {
+      const next = customLanes.filter((item) => item.id !== column.id)
+      setCustomLanes(next)
+      localStorage.setItem(`my-tasks:lanes:${workspaceId ?? 'none'}`, JSON.stringify(next))
+    } else {
+      const next = deletedLanes.includes(column.id) ? deletedLanes : [...deletedLanes, column.id]
+      setDeletedLanes(next)
+      localStorage.setItem(`my-tasks:deleted-lanes:${workspaceId ?? 'none'}`, JSON.stringify(next))
+    }
   }
 
   const renameColumn = (column: Lane, label: string) => {
-    if (column.custom) setCustomLanes((current) => current.map((item) => item.id === column.id ? { ...item, label } : item))
-    else setLaneNames((current) => ({ ...current, [column.id]: label }))
+    if (column.custom) {
+      const next = customLanes.map((item) => item.id === column.id ? { ...item, label } : item)
+      setCustomLanes(next)
+      localStorage.setItem(`my-tasks:lanes:${workspaceId ?? 'none'}`, JSON.stringify(next))
+    } else {
+      const next = { ...laneNames, [column.id]: label }
+      setLaneNames(next)
+      localStorage.setItem(`my-tasks:lane-names:${workspaceId ?? 'none'}`, JSON.stringify(next))
+    }
   }
 
   const createInColumn = async (column: Lane, title: string, _projectId: string, dueDate: string) => {
@@ -550,7 +625,7 @@ export default function TaskBoardView({ projectId, role, onOpen }: { projectId: 
     <div className="project-board-height flex h-full min-h-0 flex-col">
       {error && <div className="mb-2 flex items-center justify-between rounded-lg bg-rose-500/10 px-3 py-2 text-sm text-rose-300">{error}<button type="button" onClick={clearError} className="underline">Dismiss</button></div>}
       <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={({ active }) => setActiveId(String(active.id))} onDragEnd={moveTask} onDragCancel={() => setActiveId(null)}>
-        <div ref={boardRef} className="asana-scroll flex min-h-0 flex-1 items-stretch gap-4 overflow-x-auto overflow-y-hidden px-6 pb-4 pt-4 [--scroll-bg:#1e1f21]">
+        <div ref={boardRef} onScroll={syncBoardScroll} className="asana-scroll project-board-horizontal-scroll flex min-h-0 flex-1 items-stretch gap-4 overflow-x-auto overflow-y-hidden px-6 pb-4 pt-4 [--scroll-bg:#1e1f21]">
           {columns.map((column) => <Column
             key={column.id}
             column={column}
@@ -581,6 +656,21 @@ export default function TaskBoardView({ projectId, role, onOpen }: { projectId: 
         </div>
         <DragOverlay>{activeTask && <div className="w-[288px] rounded-lg border border-white/25 bg-[#303133] p-3 shadow-2xl"><CardContent task={activeTask} project={project} showProject={false} showDue today={toDateInput(new Date())} onToggle={() => {}} /></div>}</DragOverlay>
       </DndContext>
+      {scrollbar.visible && createPortal(
+        <div
+          ref={scrollbarRef}
+          role="region"
+          aria-label="Scroll project board horizontally"
+          aria-orientation="horizontal"
+          tabIndex={0}
+          onScroll={syncProxyScroll}
+          style={{ left: scrollbar.left, width: scrollbar.width }}
+          className="fixed-board-scrollbar fixed bottom-0 z-30 h-4 overflow-x-auto overflow-y-hidden bg-[#1e1f21] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-400"
+        >
+          <div style={{ width: scrollbar.contentWidth, height: 1 }} />
+        </div>,
+        document.body,
+      )}
     </div>
   )
 }

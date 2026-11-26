@@ -1,15 +1,27 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { CircleCheck, Home, FolderKanban } from 'lucide-react'
+import { useAppDispatch, useAppSelector } from '../app/hooks'
+import { fetchProjects } from '../features/projects/store/projects.thunks'
+import { fetchMyTasks } from '../features/tasks/store/tasks.thunks'
 import Sidebar from './sidebar'
 import Topbar from './topbar'
 
 export default function AppLayout() {
   const [panelOpen, setPanelOpen] = useState(true)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const dispatch = useAppDispatch()
+  const activeId = useAppSelector((state) => state.workspace.activeId)
+  const projectCache = useAppSelector((state) => state.projects)
+  const taskCache = useAppSelector((state) => state.tasks)
   const location = useLocation()
 
   useEffect(() => setMobileMenuOpen(false), [location.pathname])
+
+  const prefetch = (to: string) => {
+    if (to === '/tasks' && activeId && !taskCache.myLoaded && !taskCache.myRequestId) dispatch(fetchMyTasks())
+    if (to === '/projects' && activeId && !(projectCache.loaded && projectCache.workspaceId === activeId) && !(projectCache.loading && projectCache.workspaceId === activeId)) dispatch(fetchProjects(activeId))
+  }
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
@@ -22,7 +34,7 @@ export default function AppLayout() {
           open={panelOpen}
           onWorkClick={() => setPanelOpen((isOpen) => !isOpen)}
         /></div>
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-4 pb-20 md:p-6 md:pb-6">
+        <main className="home-scroll flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-4 pb-20 md:p-6 md:pb-6">
           <Outlet />
         </main>
       </div>
@@ -31,7 +43,7 @@ export default function AppLayout() {
           { to: '/', label: 'Home', Icon: Home },
           { to: '/tasks', label: 'Tasks', Icon: CircleCheck },
           { to: '/projects', label: 'Projects', Icon: FolderKanban },
-        ].map(({ to, label, Icon }) => <NavLink key={to} to={to} className={({ isActive }) => `flex flex-col items-center gap-1 text-xs ${isActive ? 'text-white' : 'text-slate-400'}`}><Icon className="h-5 w-5" />{label}</NavLink>)}
+        ].map(({ to, label, Icon }) => <NavLink key={to} to={to} onPointerDown={() => prefetch(to)} onFocus={() => prefetch(to)} className={({ isActive }) => `flex flex-col items-center gap-1 text-xs ${isActive ? 'text-white' : 'text-slate-400'}`}><Icon className="h-5 w-5" />{label}</NavLink>)}
       </nav>
       {mobileMenuOpen && <div className="fixed inset-0 z-50 md:hidden">
         <button type="button" aria-label="Close menu" onClick={() => setMobileMenuOpen(false)} className="absolute inset-0 bg-black/60" />
