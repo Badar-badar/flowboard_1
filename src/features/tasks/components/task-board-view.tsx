@@ -16,7 +16,7 @@ import type { ReactNode } from 'react'
 
 const COL = 'w-[304px]'
 type DueSectionId = 'recent' | 'today' | 'week' | 'later' | 'overdue'
-interface Lane { id: string; label: string; custom?: boolean; defaultDue?: string; tasks: ITasks.Task[]; taskCount?: number }
+interface Lane { id: string; label: string; custom?: boolean; tasks: ITasks.Task[]; taskCount?: number }
 type ProjectMap = Record<string, IProjects.Project | undefined>
 
 function readWorkspaceSetting<T>(workspaceId: string | null | undefined, key: string, fallback: T): T {
@@ -130,7 +130,7 @@ function Card({ task, project, showProject, showDue, today, onOpen, onToggle, ac
 function InlineTaskCard({ column, projects, defaultProjectId, onCreate, onClose }: { column: Lane; projects: IProjects.Project[]; defaultProjectId?: string; onCreate: (column: Lane, title: string, projectId: string, dueDate: string) => Promise<unknown>; onClose: () => void }) {
   const [title, setTitle] = useState('')
   const [projectId, setProjectId] = useState(defaultProjectId || projects[0]?._id || '')
-  const [due, setDue] = useState(column.defaultDue ?? '')
+  const [due, setDue] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const input = useRef<HTMLTextAreaElement>(null)
@@ -143,7 +143,7 @@ function InlineTaskCard({ column, projects, defaultProjectId, onCreate, onClose 
     try {
       await onCreate(column, value, projectId, due)
       setTitle('')
-      setDue(column.defaultDue ?? '')
+      setDue('')
       setTimeout(() => input.current?.focus(), 0)
     } catch (e) {
       setError(typeof e === 'string' ? e : 'Could not create task')
@@ -468,7 +468,6 @@ export default function TaskBoardView({ projectId, role, onOpen }: { projectId: 
     const sectionTasks = tasks.filter((task) => sectionForTask(task) === section.id)
     return {
       ...section,
-      defaultDue: section.custom ? undefined : ({ week: addDaysToDateInput(today, 3), later: addDaysToDateInput(today, 14), overdue: addDaysToDateInput(today, -1) })[section.id],
       tasks: sectionTasks,
     }
   }).filter((section) => (!deletedLanes.includes(section.id) || section.tasks.length > 0) && (!hideEmptyColumns || section.tasks.length > 0)), [sections, tasks, laneOverrides, customLanes, today, deletedLanes, hideEmptyColumns])

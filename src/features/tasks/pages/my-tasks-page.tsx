@@ -19,7 +19,7 @@ import { membersApi } from '../../members/api/members.api'
 import type { ITasks } from '../types/tasks.types'
 import type { ComponentType, Dispatch, ReactNode, SetStateAction } from 'react'
 
-interface LaneDefinition { id: string; label: string; custom?: boolean; defaultDue?: string }
+interface LaneDefinition { id: string; label: string; custom?: boolean }
 interface TaskColumn extends LaneDefinition { tasks: ITasks.Task[]; taskCount?: number }
 
 const VIEWS = ['List', 'Board', 'Calendar', 'Dashboard', 'Knowledge']
@@ -125,7 +125,6 @@ function MyTasksPage({ workspaceId }: { workspaceId: string }) {
       const laneTasks = tasks.filter((task) => laneOf(task) === l.id)
       return {
         ...l,
-        defaultDue: l.custom ? undefined : dueForLane(l.id, today) || undefined,
         tasks: filteredTasks.filter((task) => laneOf(task) === l.id),
         taskCount: laneTasks.length,
       }
