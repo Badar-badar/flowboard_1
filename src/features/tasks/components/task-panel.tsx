@@ -93,7 +93,20 @@ export default function TaskPanel({ taskId, projectId, role, onClose }: { taskId
     if (deleting || taskPending) return Promise.resolve()
     const pending = editTask(task._id, changes)
       .then(() => undefined)
-      .catch((e: unknown) => setError(typeof e === 'string' ? e : 'Could not save'))
+      .catch((e: unknown) => {
+        const message = typeof e === 'string'
+          ? e
+          : e && typeof e === 'object' && 'message' in e && typeof e.message === 'string'
+            ? e.message
+            : 'Could not save'
+        if (/task not found/i.test(message)) {
+          dispatch(removeTaskFromStore(task._id))
+          setError('')
+          if (!deleting) onClose()
+          return
+        }
+        setError(message)
+      })
     pendingSaves.current.add(pending)
     void pending.finally(() => pendingSaves.current.delete(pending))
     return pending
