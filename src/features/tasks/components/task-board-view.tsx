@@ -6,7 +6,7 @@ import Dropdown from '../../../components/ui/dropdown'
 import TaskCheck from './task-check'
 import { useTasks } from '../hooks/use-tasks'
 import { useProjects } from '../../projects/hooks/use-projects'
-import { addDaysToDateInput, formatDate, getTaskDueSection, isOverdue, TASK_DUE_SECTIONS, toDateInput } from '../task-constants'
+import { formatDate, getTaskDueSection, isOverdue, TASK_DUE_SECTIONS, toDateInput } from '../task-constants'
 import { canEditTasks } from '../task-permissions'
 import { useWorkspace } from '../../workspace/hooks/use-workspace'
 import type { ITasks } from '../types/tasks.types'
@@ -15,7 +15,6 @@ import type { DragEndEvent } from '@dnd-kit/core'
 import type { ReactNode } from 'react'
 
 const COL = 'w-[304px]'
-type DueSectionId = 'recent' | 'today' | 'week' | 'later' | 'overdue'
 interface Lane { id: string; label: string; custom?: boolean; tasks: ITasks.Task[]; taskCount?: number }
 type ProjectMap = Record<string, IProjects.Project | undefined>
 
@@ -530,10 +529,24 @@ export default function TaskBoardView({ projectId, role, onOpen }: { projectId: 
   ], [customLanes, laneNames])
   const sectionForTask = (task: ITasks.Task): string => {
     const override = laneOverrides[task._id]
-    if (override && customLanes.some((section) => section.id === override)) return override
-    if (override && !task.dueDate && TASK_DUE_SECTIONS.some((section) => section.id === override)) return override
+    if (override && sections.some((section) => section.id === override)) return override
     return getTaskDueSection(task, today)
   }
+  useEffect(() => {
+    if (!loaded || !tasks.length) return
+    const next = { ...laneOverrides }
+    let changed = false
+    tasks.forEach((task) => {
+      if (!next[task._id]) {
+        next[task._id] = getTaskDueSection(task, today)
+        changed = true
+      }
+    })
+    if (changed) {
+      setLaneOverrides(next)
+      try { localStorage.setItem(`my-tasks:overrides:${workspaceId ?? 'none'}`, JSON.stringify(next)) } catch { /* ignore unavailable storage */ }
+    }
+  }, [loaded, tasks, laneOverrides, today, workspaceId])
   const columns = useMemo(() => sections.map((section) => {
     const sectionTasks = tasks.filter((task) => sectionForTask(task) === section.id)
     return {
@@ -643,13 +656,9 @@ export default function TaskBoardView({ projectId, role, onOpen }: { projectId: 
 
   const createInColumn = async (column: Lane, title: string, _projectId: string, dueDate: string) => {
     const task = await addTask({ title, status: 'todo', dueDate: dueDate || undefined })
-    if (column.custom) {
-      setLaneOverrides((current) => {
-        const next = { ...current, [task._id]: column.id }
-        localStorage.setItem(`my-tasks:overrides:${workspaceId}`, JSON.stringify(next))
-        return next
-      })
-    }
+    const next = { ...laneOverrides, [task._id]: column.id }
+    setLaneOverrides(next)
+    try { localStorage.setItem(`my-tasks:overrides:${workspaceId ?? 'none'}`, JSON.stringify(next)) } catch { /* ignore unavailable storage */ }
   }
   const toggleTask = (task: ITasks.Task) => editTask(task._id, { status: task.status === 'done' ? 'todo' : 'done' }).catch(() => {})
   const moveTask = ({ active, over }: DragEndEvent) => {
@@ -658,23 +667,9 @@ export default function TaskBoardView({ projectId, role, onOpen }: { projectId: 
     const task = tasks.find((item) => item._id === String(active.id))
     const section = columns.find((item) => item.id === String(over.id))
     if (!task || !section || sectionForTask(task) === section.id) return
-    if (section.custom) {
-      setLaneOverrides((current) => {
-        const next = { ...current, [task._id]: section.id }
-        localStorage.setItem(`my-tasks:overrides:${workspaceId}`, JSON.stringify(next))
-        return next
-      })
-      return
-    }
-    setLaneOverrides((current) => {
-      const next = { ...current }
-      delete next[task._id]
-      localStorage.setItem(`my-tasks:overrides:${workspaceId}`, JSON.stringify(next))
-      return next
-    })
-    const dueDates: Record<DueSectionId, string | null> = { recent: null, today, week: addDaysToDateInput(today, 3), later: addDaysToDateInput(today, 14), overdue: addDaysToDateInput(today, -1) }
-    const dueDate = dueDates[section.id as DueSectionId]
-    editTask(task._id, { dueDate }).catch(() => {})
+    const next = { ...laneOverrides, [task._id]: section.id }
+    setLaneOverrides(next)
+    try { localStorage.setItem(`my-tasks:overrides:${workspaceId ?? 'none'}`, JSON.stringify(next)) } catch { /* ignore unavailable storage */ }
   }
 
   const submitSection = (event: React.FormEvent<HTMLFormElement>) => {

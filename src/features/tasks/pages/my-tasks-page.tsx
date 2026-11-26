@@ -10,10 +10,10 @@ import TaskCheck from '../components/task-check'
 import TaskPanel from '../components/task-panel'
 import { MyTasksBoard } from '../components/task-board-view'
 import { useMyTasks } from '../hooks/use-tasks'
-import { createTask, fetchMyTasks, updateTask } from '../store/tasks.thunks'
+import { createTask, fetchMyTasks } from '../store/tasks.thunks'
 import { clearTasksError } from '../store/tasks.slice'
 import { projectsSelectors } from '../../projects/store/projects.slice'
-import { addDaysToDateInput, formatDate, getTaskDueSection, isOverdue, TASK_DUE_SECTIONS, toDateInput } from '../task-constants'
+import { formatDate, getTaskDueSection, isOverdue, TASK_DUE_SECTIONS, toDateInput } from '../task-constants'
 import { canEditTasks } from '../task-permissions'
 import { membersApi } from '../../members/api/members.api'
 import type { ITasks } from '../types/tasks.types'
@@ -25,10 +25,6 @@ interface TaskColumn extends LaneDefinition { tasks: ITasks.Task[]; taskCount?: 
 const VIEWS = ['List', 'Board', 'Calendar', 'Dashboard', 'Knowledge']
 const todayStr = () => toDateInput(new Date())
 const BASE_LANES = TASK_DUE_SECTIONS
-
-// due date a card gets in a lane (null = clear it, undefined = leave it alone)
-const dueForLane = (id: string, today: string): string | null | undefined =>
-  ({ recent: null, today, week: addDaysToDateInput(today, 3), later: addDaysToDateInput(today, 14), overdue: addDaysToDateInput(today, -1) } as Record<string, string | null>)[id]
 
 function usePersisted<T>(key: string, initial: T): [T, Dispatch<SetStateAction<T>>] {
   const [value, setValue] = useState<T>(() => {
@@ -116,10 +112,24 @@ function MyTasksPage({ workspaceId }: { workspaceId: string }) {
 
   const laneOf = useCallback((task: ITasks.Task): string => {
     const o = overrides[task._id]
-    if (o && customLanes.some((l) => l.id === o)) return o
-    if (o && !task.dueDate && lanes.some((lane) => lane.id === o)) return o
+    if (o && lanes.some((lane) => lane.id === o)) return o
     return getTaskDueSection(task, today)
-  }, [overrides, customLanes, lanes, today])
+  }, [overrides, lanes, today])
+
+  useEffect(() => {
+    if (!loaded || !tasks.length) return
+    setOverrides((current) => {
+      let changed = false
+      const next = { ...current }
+      tasks.forEach((task) => {
+        if (!next[task._id]) {
+          next[task._id] = getTaskDueSection(task, today)
+          changed = true
+        }
+      })
+      return changed ? next : current
+    })
+  }, [loaded, tasks, today, setOverrides])
 
   const columns = useMemo(
     () => lanes.map((l) => {
@@ -135,19 +145,7 @@ function MyTasksPage({ workspaceId }: { workspaceId: string }) {
 
   const moveTask = (task: ITasks.Task, lane: TaskColumn) => {
     if (laneOf(task) === lane.id) return
-    if (lane.custom) {
-      setOverrides((cur) => ({ ...cur, [task._id]: lane.id }))
-      return
-    }
-    setOverrides((cur) => {
-      if (!(task._id in cur)) return cur
-      const next = { ...cur }
-      delete next[task._id]
-      return next
-    })
-    const dueDate = dueForLane(lane.id, today)
-    if (dueDate === undefined) return
-    dispatch(updateTask({ id: task._id, changes: { dueDate } })).unwrap().catch(() => {})
+    setOverrides((cur) => ({ ...cur, [task._id]: lane.id }))
   }
 
   const addLane = (label: string) => {
@@ -173,7 +171,7 @@ function MyTasksPage({ workspaceId }: { workspaceId: string }) {
       data: { title, status: 'todo', dueDate: due || undefined, assigneeId: me?._id },
     })).unwrap()
 
-    if (lane.custom || !due) setOverrides((cur) => ({ ...cur, [task._id]: lane.id }))
+    setOverrides((cur) => ({ ...cur, [task._id]: lane.id }))
     await dispatch(fetchMyTasks()).unwrap()
   }
 

@@ -101,10 +101,24 @@ export default function TaskListView({ projectId, role, onOpen }: { projectId: s
   ], [customLanes, laneNames])
   const taskSection = (task: ITasks.Task): string => {
     const override = laneOverrides[task._id]
-    if (override && customLanes.some((section) => section.id === override)) return override
-    if (override && !task.dueDate && dueSections.some((section) => section.id === override)) return override
+    if (override && dueSections.some((section) => section.id === override)) return override
     return getTaskDueSection(task, today)
   }
+  useEffect(() => {
+    if (!loaded || !tasks.length) return
+    const next = { ...laneOverrides }
+    let changed = false
+    tasks.forEach((task) => {
+      if (!next[task._id]) {
+        next[task._id] = getTaskDueSection(task, today)
+        changed = true
+      }
+    })
+    if (changed) {
+      setLaneOverrides(next)
+      saveLaneSetting('overrides', next)
+    }
+  }, [loaded, tasks, laneOverrides, today])
   const dueGroups = useMemo(
     () => dueSections.map((section) => ({
       ...section,
@@ -151,11 +165,9 @@ export default function TaskListView({ projectId, role, onOpen }: { projectId: s
 
   const addDueGroupTask = async (group: DueSection, title: string, dueDate?: string) => {
     const task = await addTask({ title, status: 'todo', dueDate: dueDate || undefined })
-    if (group.custom || !dueDate) {
-      const next = { ...laneOverrides, [task._id]: group.id }
-      setLaneOverrides(next)
-      saveLaneSetting('overrides', next)
-    }
+    const next = { ...laneOverrides, [task._id]: group.id }
+    setLaneOverrides(next)
+    saveLaneSetting('overrides', next)
   }
 
   const onEdit = (id: string, changes: ITasks.UpdatePayload) => editTask(id, changes).catch(() => {})
