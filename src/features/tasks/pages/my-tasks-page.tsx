@@ -117,8 +117,9 @@ function MyTasksPage({ workspaceId }: { workspaceId: string }) {
   const laneOf = useCallback((task: ITasks.Task): string => {
     const o = overrides[task._id]
     if (o && customLanes.some((l) => l.id === o)) return o
+    if (o && !task.dueDate && lanes.some((lane) => lane.id === o)) return o
     return getTaskDueSection(task, today)
-  }, [overrides, customLanes, today])
+  }, [overrides, customLanes, lanes, today])
 
   const columns = useMemo(
     () => lanes.map((l) => {
@@ -172,7 +173,7 @@ function MyTasksPage({ workspaceId }: { workspaceId: string }) {
       data: { title, status: 'todo', dueDate: due || undefined, assigneeId: me?._id },
     })).unwrap()
 
-    if (lane.custom) setOverrides((cur) => ({ ...cur, [task._id]: lane.id }))
+    if (lane.custom || !due) setOverrides((cur) => ({ ...cur, [task._id]: lane.id }))
     await dispatch(fetchMyTasks()).unwrap()
   }
 

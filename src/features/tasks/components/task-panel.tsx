@@ -14,6 +14,8 @@ import { canChangeStatus, canEditTasks } from '../task-permissions'
 import TaskComments from './task-comments'
 import Avatar from '../../../components/ui/avatar'
 import { useAuth } from '../../auth/hooks/use-auth'
+import { useAppDispatch } from '../../../app/hooks'
+import { removeTaskFromStore } from '../store/tasks.slice'
 import type { ITasks } from '../types/tasks.types'
 import type { ReactNode } from 'react'
 
@@ -41,6 +43,7 @@ const Row = ({ label, children }: { label: string; children: ReactNode }) => (
 
 export default function TaskPanel({ taskId, projectId, role, onClose }: { taskId: string; projectId: string; role?: string; onClose: () => void }) {
   const task = useTask(taskId)
+  const dispatch = useAppDispatch()
   const { editTask, removeTask, addFiles, removeFile } = useTasks(projectId)
   const { members, meId } = useProjectMembers(projectId)
   const { user } = useAuth()
@@ -51,6 +54,7 @@ export default function TaskPanel({ taskId, projectId, role, onClose }: { taskId
   const [description, setDescription] = useState('')
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState('')
+  const [deleting, setDeleting] = useState(false)
   const panelRef = useRef<HTMLElement>(null)
 
   // reset the text fields only when another task is opened
@@ -75,7 +79,7 @@ export default function TaskPanel({ taskId, projectId, role, onClose }: { taskId
   if (!task) {
     return (
       <aside ref={panelRef} className="fixed right-0 top-0 z-50 flex h-full w-full max-w-[480px] items-center justify-center border-l border-white/10 bg-[#1f1f1f] text-slate-400">
-        Loading...
+        {deleting ? 'Deleting task…' : 'Loading...'}
       </aside>
     )
   }
@@ -95,8 +99,26 @@ export default function TaskPanel({ taskId, projectId, role, onClose }: { taskId
   }
 
   const onDelete = async () => {
-    if (!window.confirm(`Delete "${task.title}"? This cannot be undone.`)) return
-    try { await removeTask(task._id); onClose() } catch (e) { setError(typeof e === 'string' ? e : 'Could not delete') }
+    if (deleting || !window.confirm(`Delete "${task.title}"? This cannot be undone.`)) return
+    setDeleting(true)
+    setError('')
+    try {
+      await removeTask(task._id)
+      onClose()
+    } catch (e) {
+      const message = typeof e === 'string'
+        ? e
+        : e && typeof e === 'object' && 'message' in e && typeof e.message === 'string'
+          ? e.message
+          : 'Could not delete'
+      if (/task not found/i.test(message)) {
+        dispatch(removeTaskFromStore(task._id))
+        onClose()
+        return
+      }
+      setError(message)
+      setDeleting(false)
+    }
   }
 
   const copy = async () => {
@@ -130,7 +152,7 @@ export default function TaskPanel({ taskId, projectId, role, onClose }: { taskId
             <Link2 className="h-5 w-5" />
           </button>
           {fullEdit && (
-            <button onClick={onDelete} title="Delete task" className="rounded p-2 text-slate-400 hover:bg-white/10 hover:text-rose-400">
+            <button onClick={onDelete} disabled={deleting} title={deleting ? 'Deleting task' : 'Delete task'} className="rounded p-2 text-slate-400 hover:bg-white/10 hover:text-rose-400 disabled:cursor-wait disabled:opacity-50">
               <Trash2 className="h-5 w-5" />
             </button>
           )}

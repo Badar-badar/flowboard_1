@@ -40,6 +40,10 @@ const tasksSlice = createSlice({
   initialState,
   reducers: {
     clearTasksError(s) { s.error = null },
+    removeTaskFromStore(s, { payload }: { payload: string }) {
+      adapter.removeOne(s, payload)
+      s.myIds = s.myIds.filter((id) => id !== payload)
+    },
     includeCreatedTaskInMyTasks(s, { payload }: { payload: ITasks.Task }) {
       adapter.upsertOne(s, payload)
       if (!s.myIds.includes(payload._id)) s.myIds.unshift(payload._id)
@@ -155,7 +159,7 @@ const tasksSlice = createSlice({
   },
 })
 
-export const { clearTasksError, includeCreatedTaskInMyTasks } = tasksSlice.actions
+export const { clearTasksError, removeTaskFromStore, includeCreatedTaskInMyTasks } = tasksSlice.actions
 export const tasksSelectors = adapter.getSelectors((state: RootState) => state.tasks)
 
 export const selectTasksByProject = createSelector(

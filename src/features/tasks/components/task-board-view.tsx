@@ -531,6 +531,7 @@ export default function TaskBoardView({ projectId, role, onOpen }: { projectId: 
   const sectionForTask = (task: ITasks.Task): string => {
     const override = laneOverrides[task._id]
     if (override && customLanes.some((section) => section.id === override)) return override
+    if (override && !task.dueDate && TASK_DUE_SECTIONS.some((section) => section.id === override)) return override
     return getTaskDueSection(task, today)
   }
   const columns = useMemo(() => sections.map((section) => {

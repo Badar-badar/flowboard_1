@@ -102,6 +102,7 @@ export default function TaskListView({ projectId, role, onOpen }: { projectId: s
   const taskSection = (task: ITasks.Task): string => {
     const override = laneOverrides[task._id]
     if (override && customLanes.some((section) => section.id === override)) return override
+    if (override && !task.dueDate && dueSections.some((section) => section.id === override)) return override
     return getTaskDueSection(task, today)
   }
   const dueGroups = useMemo(
@@ -150,7 +151,7 @@ export default function TaskListView({ projectId, role, onOpen }: { projectId: s
 
   const addDueGroupTask = async (group: DueSection, title: string, dueDate?: string) => {
     const task = await addTask({ title, status: 'todo', dueDate: dueDate || undefined })
-    if (group.custom) {
+    if (group.custom || !dueDate) {
       const next = { ...laneOverrides, [task._id]: group.id }
       setLaneOverrides(next)
       saveLaneSetting('overrides', next)
